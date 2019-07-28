@@ -535,7 +535,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
             if (this.parent != null && this.parent.version != null) {
                 return true;
             }
-            this.logger.error("Mixin config {} does not specify \"minVersion\" property", this.name);
+            this.logger.debug("Mixin config {} does not specify \"minVersion\" property", this.name);
         }
         
         VersionNumber minVersion = VersionNumber.parse(this.version);
