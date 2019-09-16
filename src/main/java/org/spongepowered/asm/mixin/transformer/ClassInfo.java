@@ -1440,10 +1440,11 @@ public final class ClassInfo {
      * @param name Method name to search for
      * @param desc Method descriptor
      * @param searchType Search strategy to use
+     * @param flags search flags
      * @return the method object or null if the method could not be resolved
      */
-    public Method findMethodInHierarchy(String name, String desc, SearchType searchType) {
-        return this.findMethodInHierarchy(name, desc, searchType, Traversal.NONE);
+    public Method findMethodInHierarchy(String name, String desc, SearchType searchType, int flags) {
+        return this.findMethodInHierarchy(name, desc, searchType, Traversal.NONE, flags);
     }
 
     /**

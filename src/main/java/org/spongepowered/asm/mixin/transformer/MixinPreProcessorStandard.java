@@ -29,14 +29,10 @@ import java.util.Iterator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.*;
 import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
@@ -47,6 +43,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
+import org.spongepowered.asm.mixin.struct.MemberRef;
 import org.spongepowered.asm.mixin.throwables.MixinException;
 import org.spongepowered.asm.mixin.transformer.ActivityStack.Activity;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
@@ -713,6 +710,8 @@ class MixinPreProcessorStandard {
                     this.transformMethod((MethodInsnNode)insn);
                 } else if (insn instanceof FieldInsnNode) {
                     this.transformField((FieldInsnNode)insn);
+                } else if (insn instanceof InvokeDynamicInsnNode) {
+                    this.transformInvokeDynamic((InvokeDynamicInsnNode)insn);
                 }
                 activity.end();
             }
@@ -720,40 +719,59 @@ class MixinPreProcessorStandard {
         methodActivity.end();
     }
 
-    protected void transformMethod(MethodInsnNode methodNode) {
-        Activity activity = this.activities.begin("%s::%s%s", methodNode.owner, methodNode.name, methodNode.desc);
+    protected void transformInvokeDynamic(InvokeDynamicInsnNode invokeDynamicNode) {
+        Activity activity = this.activities.begin("%s%s", invokeDynamicNode.name, invokeDynamicNode.desc);
         Section metaTimer = this.profiler.begin("meta");
-        ClassInfo owner = ClassInfo.forDescriptor(methodNode.owner, TypeLookup.DECLARED_TYPE);
-        if (owner == null) {
-            throw new RuntimeException(new ClassNotFoundException(methodNode.owner.replace('/', '.')));
+
+        MemberRef.Handle ref = new MemberRef.Handle(invokeDynamicNode.bsm);
+        transformMemberReference(ref);
+        invokeDynamicNode.bsm = ref.getMethodHandle();
+
+        for (int i = 0; i < invokeDynamicNode.bsmArgs.length; i++) {
+            if (invokeDynamicNode.bsmArgs[i] instanceof Handle) {
+                ref = new MemberRef.Handle((Handle) invokeDynamicNode.bsmArgs[i]);
+                transformMemberReference(ref);
+                invokeDynamicNode.bsmArgs[i] = ref.getMethodHandle();
+            }
         }
 
-        int includeStatic = (methodNode.getOpcode() == Opcodes.INVOKESTATIC
-                ? ClassInfo.INCLUDE_STATIC : 0);
-        Method method = owner.findMethodInHierarchy(methodNode, SearchType.ALL_CLASSES, ClassInfo.INCLUDE_PRIVATE | includeStatic);
         metaTimer.end();
-        
-        if (method != null && method.isRenamed()) {
-            methodNode.name = method.getName();
-        }
         activity.end();
     }
 
+    protected void transformMethod(MethodInsnNode methodNode) {
+        MemberRef.Method ref = new MemberRef.Method(methodNode);
+        transformMemberReference(ref);
+    }
+
     protected void transformField(FieldInsnNode fieldNode) {
-        Activity activity = this.activities.begin("%s::%s:%s", fieldNode.owner, fieldNode.name, fieldNode.desc);
+        MemberRef.Field ref = new MemberRef.Field(fieldNode);
+        transformMemberReference(ref);
+    }
+
+    protected void transformMemberReference(MemberRef ref) {
+        Activity activity = this.activities.begin("%s::%s%s", ref.getOwner(), ref.getName(), ref.getDesc());
         Section metaTimer = this.profiler.begin("meta");
-        ClassInfo owner = ClassInfo.forDescriptor(fieldNode.owner, TypeLookup.DECLARED_TYPE);
+
+        ClassInfo owner = ClassInfo.forDescriptor(ref.getOwner(), TypeLookup.DECLARED_TYPE);
         if (owner == null) {
-            throw new RuntimeException(new ClassNotFoundException(fieldNode.owner.replace('/', '.')));
+            throw new RuntimeException(new ClassNotFoundException(ref.getOwner().replace('/', '.')));
         }
 
-        int includeStatic = ((fieldNode.getOpcode() == Opcodes.GETSTATIC || fieldNode.getOpcode() == Opcodes.PUTSTATIC)
-                ? ClassInfo.INCLUDE_STATIC : 0);
-        Field field = owner.findField(fieldNode, ClassInfo.INCLUDE_PRIVATE | includeStatic);
+        ClassInfo.Member member;
+        if (ref.isField()) {
+            int includeStatic = ((ref.getOpcode() == Opcodes.GETSTATIC || ref.getOpcode() == Opcodes.PUTSTATIC)
+                    ? ClassInfo.INCLUDE_STATIC : 0);
+            member = owner.findField(ref.getName(), ref.getDesc(), ClassInfo.INCLUDE_PRIVATE | includeStatic);
+        } else {
+            int includeStatic = (ref.getOpcode() == Opcodes.INVOKESTATIC
+                    ? ClassInfo.INCLUDE_STATIC : 0);
+            member = owner.findMethodInHierarchy(ref.getName(), ref.getDesc(), SearchType.ALL_CLASSES, ClassInfo.INCLUDE_PRIVATE | includeStatic);
+        }
+
         metaTimer.end();
-        
-        if (field != null && field.isRenamed()) {
-            fieldNode.name = field.getName();
+        if (member != null && member.isRenamed()) {
+            ref.setName(member.getName());
         }
         activity.end();
     }
