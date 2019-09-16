@@ -45,6 +45,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
+import org.spongepowered.asm.mixin.refmap.IClassReferenceMapper;
 import org.spongepowered.asm.mixin.refmap.IReferenceMapper;
 import org.spongepowered.asm.mixin.refmap.ReferenceMapper;
 import org.spongepowered.asm.mixin.refmap.RemappingReferenceMapper;
@@ -888,7 +889,12 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
 //        if (remapped != null) {
 //            return remapped;
 //        }
-        return this.getReferenceMapper().remap(className, reference);
+        IReferenceMapper mapper = this.getReferenceMapper();
+        if (mapper instanceof IClassReferenceMapper) {
+            return ((IClassReferenceMapper) mapper).remapClassName(className, reference);
+        } else {
+            return mapper.remap(className, reference);
+        }
     }
     
     /* (non-Javadoc)
