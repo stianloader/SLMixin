@@ -21,7 +21,15 @@ defaultTasks 'build'
 // Basic project information
 group = 'net.fabricmc'
 archivesBaseName = 'sponge-mixin'
-version = buildVersion + (buildType == 'RELEASE' ? '' : "-$buildType")
+version = buildVersion
+
+ext.buildNumber = '0'
+
+def ENV = System.getenv()
+if (ENV.BUILD_NUMBER) {
+    version = version + "." + "${ENV.BUILD_NUMBER}"
+    ext.buildNumber = "${ENV.BUILD_NUMBER}"
+}
 
 // Extended project information
 ext.projectName = 'Mixin'
@@ -29,7 +37,6 @@ ext.inceptionYear = '2014'
 ext.packaging = 'jar'
 
 // Define variables
-ext.buildNumber = project.hasProperty("buildNumber") ? buildNumber : '0'
 ext.ciSystem = project.hasProperty("ciSystem") ? ciSystem : 'unknown'
 ext.commit = project.hasProperty("commit") ? commit : 'unknown'
 ext.asmVersion = project.hasProperty("asmVersion") ? asmVersion : '6.2'
