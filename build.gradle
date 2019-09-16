@@ -343,7 +343,7 @@ publishing {
             artifactId project.archivesBaseName
             version project.version
 
-            artifact jar
+            artifact stagingJar
             artifact sourceJar
             artifact javadocJar
 
