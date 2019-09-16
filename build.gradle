@@ -157,6 +157,7 @@ dependencies {
 
 javadoc {
     classpath += sourceSets.legacy.output // why?
+    options.encoding = 'UTF-8'
 }
 
 // Eclipse
