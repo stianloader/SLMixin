@@ -118,8 +118,6 @@ dependencies {
 
     thinJar "org.ow2.asm:asm-tree:$asmVersion"
     thinJar "org.ow2.asm:asm-util:$asmVersion"
-    
-    stagingJar "org.ow2.asm:asm-util:$asmVersion"
 
     // Tests
 //    testCompile 'junit:junit:4.11'
