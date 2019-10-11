@@ -34,8 +34,8 @@ import org.objectweb.asm.tree.ClassNode;
 public final class ASM {
     
     @SuppressWarnings("deprecation")
-    private static final int[] EXPERIMENTAL_VERSIONS = { Opcodes.ASM7_EXPERIMENTAL }; 
-    private static final int[] SUPPORTED_VERSIONS = { Opcodes.ASM6, Opcodes.ASM5 }; 
+    private static final int[] EXPERIMENTAL_VERSIONS = {  };
+    private static final int[] SUPPORTED_VERSIONS = { Opcodes.ASM6, Opcodes.ASM5, Opcodes.ASM7 };
     
     public static final int API_VERSION = ASM.detectVersion();
     
