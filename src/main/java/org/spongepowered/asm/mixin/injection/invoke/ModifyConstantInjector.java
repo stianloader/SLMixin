@@ -33,6 +33,7 @@ import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LocalVariableNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.code.Injector;
@@ -76,6 +77,12 @@ public class ModifyConstantInjector extends RedirectInjector {
         }
         
         AbstractInsnNode targetNode = node.getCurrentTarget();
+        if (targetNode instanceof TypeInsnNode) {
+            this.checkTargetModifiers(target, false);
+            this.injectTypeConstantModifier(target, (TypeInsnNode)targetNode);
+            return;
+        }
+        
         if (targetNode instanceof JumpInsnNode) {
             this.checkTargetModifiers(target, false);
             this.injectExpandedConstantModifier(target, (JumpInsnNode)targetNode);
@@ -88,10 +95,19 @@ public class ModifyConstantInjector extends RedirectInjector {
             return;
         }
         
-        throw new InvalidInjectionException(this.info, this.annotationType + " annotation is targetting an invalid insn in "
-                + target + " in " + this);
+        throw new InvalidInjectionException(this.info, String.format("%s annotation is targetting an invalid insn in %s in %s",
+                this.annotationType, target, this));
     }
     
+    private void injectTypeConstantModifier(Target target, TypeInsnNode typeNode) {
+        int opcode = typeNode.getOpcode();
+        if (opcode != Opcodes.INSTANCEOF) {
+            throw new InvalidInjectionException(this.info, String.format("%s annotation does not support %s insn in %s in %s",
+                    this.annotationType, Bytecode.getOpcodeName(opcode), target, this));
+        }
+        this.injectAtInstanceOf(target, typeNode);
+    }
+
     /**
      * Injects a constant modifier at an implied-zero
      * 
@@ -101,8 +117,8 @@ public class ModifyConstantInjector extends RedirectInjector {
     private void injectExpandedConstantModifier(Target target, JumpInsnNode jumpNode) {
         int opcode = jumpNode.getOpcode();
         if (opcode < Opcodes.IFLT || opcode > Opcodes.IFLE) {
-            throw new InvalidInjectionException(this.info, this.annotationType + " annotation selected an invalid opcode "
-                    + Bytecode.getOpcodeName(opcode) + " in " + target + " in " + this); 
+            throw new InvalidInjectionException(this.info, String.format("%s annotation selected an invalid opcode %s in %s in %s",
+                    this.annotationType, Bytecode.getOpcodeName(opcode), target, this)); 
         }
         
         Extension extraStack = target.extendStack();
@@ -130,17 +146,16 @@ public class ModifyConstantInjector extends RedirectInjector {
     }
 
     private AbstractInsnNode invokeConstantHandler(Type constantType, Target target, Extension extraStack, InsnList before, InsnList after) {
-        final String handlerDesc = Bytecode.generateDescriptor(constantType, constantType);
-        final boolean withArgs = this.checkDescriptor(handlerDesc, target, "getter");
+        InjectorData handler = new InjectorData(target, "constant modifier");
+        this.validateParams(handler, constantType, constantType);
 
         if (!this.isStatic) {
             before.insert(new VarInsnNode(Opcodes.ALOAD, 0));
             extraStack.add();
         }
         
-        if (withArgs) {
-            this.pushArgs(target.arguments, after, target.getArgIndices(), 0, target.arguments.length);
-            extraStack.add(target.arguments);
+        if (handler.captureTargetArgs > 0) {
+            this.pushArgs(target.arguments, after, target.getArgIndices(), 0, handler.captureTargetArgs, extraStack);
         }
         
         return this.invokeHandler(after);

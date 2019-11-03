@@ -22,26 +22,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.mixin;
+package org.spongepowered.asm.service;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.Collection;
 
 /**
- * Pseudo-implements decorator for Mixins with conflicting methods in a
- * superclass to soft-implement an interface
+ * Interface for interacting with transforming classloaders. This service
+ * component is entirely optional and services can elect to return <tt>null</tt>
+ * if the platform does not support interacting with the transformer chain (or
+ * doesn't <em>have</em> a transformer chain!)
  */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
-public @interface Implements {
+public interface ITransformerProvider {
+
+    /**
+     * Get currently available transformers in the environment
+     */
+    public abstract Collection<ITransformer> getTransformers();
+
+    /**
+     * Get currently available transformers in the environment
+     */
+    public abstract Collection<ITransformer> getDelegatedTransformers();
     
     /**
-     * Interfaces implemented, see javadoc in {@link Interface}
+     * Adds a transformer to the transformer exclusions list
      * 
-     * @return list of interfaces to implement
+     * @param name Class transformer exclusion to add
      */
-    public Interface[] value();
+    public abstract void addTransformerExclusion(String name);
 
 }

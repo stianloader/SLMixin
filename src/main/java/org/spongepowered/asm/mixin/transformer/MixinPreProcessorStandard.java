@@ -512,10 +512,14 @@ class MixinPreProcessorStandard {
         String type = method.isSynthetic() ? "synthetic" : "@Unique";
         
         if (Bytecode.getVisibility(mixinMethod).ordinal() < Visibility.PUBLIC.ordinal()) {
-            String uniqueName = context.getUniqueName(mixinMethod, false);
-            MixinPreProcessorStandard.logger.log(this.mixin.getLoggingLevel(), "Renaming {} method {}{} to {} in {}",
-                    type, mixinMethod.name, mixinMethod.desc, uniqueName, this.mixin);
-            mixinMethod.name = method.conform(uniqueName);
+            if (method.isConformed()) {
+                mixinMethod.name = method.getName();
+            } else {
+                String uniqueName = context.getUniqueName(mixinMethod, false);
+                MixinPreProcessorStandard.logger.log(this.mixin.getLoggingLevel(), "Renaming {} method {}{} to {} in {}",
+                        type, mixinMethod.name, mixinMethod.desc, uniqueName, this.mixin);
+                mixinMethod.name = method.conform(uniqueName);
+            }
             return false;
         }
 
@@ -597,7 +601,7 @@ class MixinPreProcessorStandard {
                 target = context.findRemappedField(mixinField);
                 if (target == null) {
                     // If this field is a shadow field but is NOT found in the target class, that's bad, mmkay
-                    throw new InvalidMixinException(this.mixin, String.format("Shadow field %s was not located in the target class %s. %s%s",
+                    throw new InvalidMixinException(this.mixin, String.format("@Shadow field %s was not located in the target class %s. %s%s",
                             mixinField.name, context.getTarget(), context.getReferenceMapper().getStatus(),
                             MixinPreProcessorStandard.getDynamicInfo(mixinField)));
                 }

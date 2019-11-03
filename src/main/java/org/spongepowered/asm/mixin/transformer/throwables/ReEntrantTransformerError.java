@@ -22,26 +22,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.mixin;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.spongepowered.asm.mixin.transformer.throwables;
 
 /**
- * Pseudo-implements decorator for Mixins with conflicting methods in a
- * superclass to soft-implement an interface
+ * Error thrown when transformer re-entrance is detected
  */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
-public @interface Implements {
-    
-    /**
-     * Interfaces implemented, see javadoc in {@link Interface}
-     * 
-     * @return list of interfaces to implement
-     */
-    public Interface[] value();
+public class ReEntrantTransformerError extends MixinTransformerError {
+
+    private static final long serialVersionUID = 7073583236491579255L;
+
+    public ReEntrantTransformerError(String message) {
+        super(message);
+    }
+
+    public ReEntrantTransformerError(Throwable cause) {
+        super(cause);
+    }
+
+    public ReEntrantTransformerError(String message, Throwable cause) {
+        super(message, cause);
+    }
 
 }

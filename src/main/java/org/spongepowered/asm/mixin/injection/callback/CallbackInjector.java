@@ -170,7 +170,7 @@ public class CallbackInjector extends Injector {
             this.node = node;
             this.locals = locals;
             this.localTypes = locals != null ? new Type[locals.length] : null;
-            this.frameSize = Bytecode.getFirstNonArgLocalIndex(target.arguments, !CallbackInjector.this.isStatic());
+            this.frameSize = Bytecode.getFirstNonArgLocalIndex(target.arguments, !target.isStatic);
             List<String> argNames = null;
             
             if (locals != null) {
@@ -190,7 +190,8 @@ public class CallbackInjector extends Injector {
             }
             
             // Calc number of args for the handler method, additional 1 is to ignore the CallbackInfo arg
-            this.extraArgs = Math.max(0, Bytecode.getFirstNonArgLocalIndex(this.handler) - (this.frameSize + 1));
+            Type[] handlerArgs = Type.getArgumentTypes(this.handler.desc);
+            this.extraArgs = Math.max(0, handlerArgs.length - target.arguments.length - 1);
             this.argNames = argNames != null ? argNames.toArray(new String[argNames.size()]) : null;
             this.canCaptureLocals = captureLocals && locals != null && locals.length > this.frameSize;
             this.isAtReturn = this.node.getCurrentTarget() instanceof InsnNode && this.isValueReturnOpcode(this.node.getCurrentTarget().getOpcode());
@@ -426,6 +427,11 @@ public class CallbackInjector extends Injector {
 
         if (this.localCapture.isCaptureLocals() || this.localCapture.isPrintLocals()) {
             locals = Locals.getLocalsAt(this.classNode, target.method, node.getCurrentTarget());
+            for (int j = 0; j < locals.length; j++) {
+                if (locals[j] != null && locals[j].desc != null && locals[j].desc.startsWith("Lorg/spongepowered/asm/mixin/injection/callback/")) {
+                    locals[j] = null;
+                }
+            }
         }
 
         this.inject(new Callback(this.methodNode, target, node, locals, this.localCapture.isCaptureLocals()));
@@ -523,8 +529,11 @@ public class CallbackInjector extends Injector {
      */
     private String generateBadLVTMessage(final Callback callback) {
         int position = callback.target.indexOf(callback.node);
-        List<String> expected = CallbackInjector.summariseLocals(callback.getDescriptorWithAllLocals(), callback.target.arguments.length + 1);
-        List<String> found = CallbackInjector.summariseLocals(this.methodNode.desc, callback.target.arguments.length + 1);
+        List<String> expected = CallbackInjector.summariseLocals(this.methodNode.desc, callback.target.arguments.length + 1);
+        List<String> found = CallbackInjector.summariseLocals(callback.getDescriptor(), callback.frameSize + (callback.target.isStatic ? 1 : 0));
+        if (expected.equals(found)) {
+            return String.format("Invalid descriptor on %s! Expected %s but found %s", this.info, callback.getDescriptor(), this.methodNode.desc);
+        }
         return String.format("LVT in %s has incompatible changes at opcode %d in callback %s.\nExpected: %s\n   Found: %s",
                 callback.target, position, this, expected, found);
     }
@@ -558,7 +567,7 @@ public class CallbackInjector extends Injector {
     private void printLocals(final Callback callback) {
         Type[] args = Type.getArgumentTypes(callback.getDescriptorWithAllLocals());
         SignaturePrinter methodSig = new SignaturePrinter(callback.target.method, callback.argNames);
-        SignaturePrinter handlerSig = new SignaturePrinter(this.methodNode.name, callback.target.returnType, args, callback.argNames);
+        SignaturePrinter handlerSig = new SignaturePrinter(this.info.getMethodName(), callback.target.returnType, args, callback.argNames);
         handlerSig.setModifiers(this.methodNode);
         
         PrettyPrinter printer = new PrettyPrinter();
@@ -566,7 +575,7 @@ public class CallbackInjector extends Injector {
         printer.kv("Target Method", methodSig);
         printer.kv("Target Max LOCALS", callback.target.getMaxLocals());
         printer.kv("Initial Frame Size", callback.frameSize);
-        printer.kv("Callback Name", this.methodNode.name);
+        printer.kv("Callback Name", this.info.getMethodName());
         printer.kv("Instruction", "%s %s", callback.node.getClass().getSimpleName(),
                 Bytecode.getOpcodeName(callback.node.getCurrentTarget().getOpcode()));
         printer.hr();

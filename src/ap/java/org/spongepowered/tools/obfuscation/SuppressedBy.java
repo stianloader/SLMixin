@@ -22,37 +22,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.mixin.transformer.meta;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.spongepowered.tools.obfuscation;
 
 /**
- * <p><b>For internal use only!</b> Contains small parts. Keep out of reach of
- * children.</p>
- * 
- * <p>Decoration annotation used by the mixin applicator to mark methods in a
- * class which have been added or overwritten by a mixin.</p>
+ * A centralised list of tokens supported by the AP for use in
+ * {@link SuppressWarnings} annotations. Collected here mainly for
+ * self-documentation purposes.
  */
-@Target({ /* No targets allowed */ })
-@Retention(RetentionPolicy.RUNTIME)
-public @interface MixinMerged {
+public enum SuppressedBy {
     
     /**
-     * Mixin which merged this method
-     * 
-     * @return mixin name 
+     * Suppress warnings for constraint violations
      */
-    public String mixin();
+    CONSTRAINTS("constraints"),
     
     /**
-     * Prioriy of the mixin which merged this method, used to allow mixins with
-     * higher priority to overwrite methods already overwritten by those with a
-     * lower priority.
-     * 
-     * @return mixin priority
+     * Suppress warnings about overwrite visibility upgrading/downgrading target
+     * visibility 
      */
-    public int priority();
+    VISIBILITY("visibility"),
     
+    /**
+     * Suppress warnings when an injector target cannot be found
+     */
+    TARGET("target"),
+    
+    /**
+     * Suppress warnings when a class, method or field mapping cannot be located
+     */
+    MAPPING("mapping"),
+    
+    /**
+     * Suppress warnings for when an <tt>&#064;Overwrite</tt> method is missing
+     * javadoc, or author or reason tags
+     */
+    OVERWRITE("overwrite"),
+    
+    /**
+     * Suppress warnings when a mixin target specified by name is located in the
+     * default package
+     */
+    DEFAULT_PACKAGE("default-package");
+    
+    private final String token;
+
+    private SuppressedBy(String token) {
+        this.token = token;
+    }
+    
+    /**
+     * Get the string token which is used in the {@link SuppressWarnings}
+     * annotation
+     */
+    public String getToken() {
+        return this.token;
+    }
+
 }

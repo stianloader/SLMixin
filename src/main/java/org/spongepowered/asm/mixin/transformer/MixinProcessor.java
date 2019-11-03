@@ -24,7 +24,6 @@
  */
 package org.spongepowered.asm.mixin.transformer;
 
-import java.lang.reflect.Constructor;
 import java.text.DecimalFormat;
 import java.util.*;
 
@@ -53,6 +52,7 @@ import org.spongepowered.asm.mixin.transformer.ext.extensions.ExtensionClassExpo
 import org.spongepowered.asm.mixin.transformer.meta.MixinMerged;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
+import org.spongepowered.asm.mixin.transformer.throwables.ReEntrantTransformerError;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.PrettyPrinter;
@@ -131,8 +131,6 @@ public class MixinProcessor {
         }
         
     }
-    
-    private static final String MIXIN_AGENT_CLASS = "org.spongepowered.tools.agent.MixinAgent";
 
     /**
      * Log all the things
@@ -209,34 +207,14 @@ public class MixinProcessor {
     /**
      * ctor 
      */
-    MixinProcessor(MixinEnvironment environment, Extensions extensions) {
+    MixinProcessor(MixinEnvironment environment, Extensions extensions, IHotSwap hotSwapper) {
         this.lock = this.service.getReEntranceLock();
         
         this.extensions = extensions;
-        this.hotSwapper = this.initHotSwapper(environment);
+        this.hotSwapper = hotSwapper;
         this.postProcessor = new MixinPostProcessor(this.sessionId);
         
         this.profiler = MixinEnvironment.getProfiler();
-    }
-
-    private IHotSwap initHotSwapper(MixinEnvironment environment) {
-        if (!environment.getOption(Option.HOT_SWAP)) {
-            return null;
-        }
-
-        try {
-            MixinProcessor.logger.info("Attempting to load Hot-Swap agent");
-            @SuppressWarnings("unchecked")
-            Class<? extends IHotSwap> clazz =
-                    (Class<? extends IHotSwap>)Class.forName(MixinProcessor.MIXIN_AGENT_CLASS);
-            Constructor<? extends IHotSwap> ctor = clazz.getDeclaredConstructor(MixinProcessor.class);
-            return ctor.newInstance(this);
-        } catch (Throwable th) {
-            MixinProcessor.logger.info("Hot-swap agent could not be loaded, hot swapping of mixins won't work. {}: {}",
-                    th.getClass().getSimpleName(), th.getMessage());
-        }
-
-        return null;
     }
 
     /**
@@ -282,7 +260,15 @@ public class MixinProcessor {
         boolean locked = this.lock.push().check();
         Section mixinTimer = this.profiler.begin("mixin");
 
-        if (!locked) {
+        if (locked) {
+            for (MixinConfig config : this.pendingConfigs) {
+                if (config.hasPendingMixinsFor(name)) {
+                    ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");
+                    MixinProcessor.logger.warn("Re-entrance detected during prepare phase, this will cause serious problems.", error);
+                    throw error;
+                }
+            }
+        } else {
             try {
                 this.checkSelect(environment);
             } catch (Exception ex) {
@@ -321,22 +307,22 @@ public class MixinProcessor {
                     mixins.addAll(config.getMixinsFor(name));
                 }
             }
-            
+
             if (invalidRef) {
                 throw new NoClassDefFoundError(String.format("%s is a mixin class and cannot be referenced directly", name));
             }
             
             if (mixins != null) {
+                
                 // Re-entrance is "safe" as long as we don't need to apply any mixins, if there are mixins then we need to panic now
                 if (locked) {
-                    MixinApplyError error = new MixinApplyError("Re-entrance error.");
+                    ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");
                     MixinProcessor.logger.warn("Re-entrance detected, this will cause serious problems.", error);
                     throw error;
                 }
 
                 if (this.hotSwapper != null) {
-                    // TODO hotswapper
-//                    this.hotSwapper.registerTargetClass(transformedName, basicClass);
+                    this.hotSwapper.registerTargetClass(name, targetClassNode);
                 }
 
                 try {
@@ -353,7 +339,8 @@ public class MixinProcessor {
                     this.handleMixinApplyError(name, th, environment);
                 }
             }
-
+        } catch (MixinTransformerError er) {
+            throw er;
         } catch (Throwable th) {
             th.printStackTrace();
             this.dumpClassOnFailure(name, targetClassNode, environment);
@@ -539,7 +526,7 @@ public class MixinProcessor {
         Section timer = this.profiler.begin("preapply");
         this.extensions.preApply(context);
         timer = timer.next("apply");
-        this.apply(context);
+        context.applyMixins();
         timer = timer.next("postapply");
         boolean export = false;
         try {
@@ -554,15 +541,9 @@ public class MixinProcessor {
         if (export) {
             this.extensions.export(this.currentEnvironment, context.getClassName(), context.isExportForced(), context.getClassNode());
         }
-    }
-
-    /**
-     * Apply the mixins to the target class
-     * 
-     * @param context Target class context
-     */
-    private void apply(TargetClassContext context) {
-        context.applyMixins();
+        for (InvalidMixinException suppressed : context.getSuppressedExceptions()) {
+            this.handleMixinApplyError(context.getClassName(), suppressed, environment);
+        }
     }
 
     private void handleMixinPrepareError(MixinConfig config, InvalidMixinException ex, MixinEnvironment environment) throws MixinPrepareError {
@@ -589,6 +570,7 @@ public class MixinProcessor {
         
         if (environment.getOption(Option.DEBUG_VERBOSE)) {
             new PrettyPrinter()
+                .wrapTo(160)
                 .add("Invalid Mixin").centre()
                 .hr('-')
                 .kvWidth(10)
@@ -602,7 +584,7 @@ public class MixinProcessor {
                 .addWrapped("    %s", ex.getMessage())
                 .hr('-')
                 .add(ex, 8)
-                .trace(action.logLevel);
+                .log(action.logLevel);
         }
     
         for (IMixinErrorHandler handler : this.getErrorHandlers(mixin.getPhase())) {

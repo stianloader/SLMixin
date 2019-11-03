@@ -379,6 +379,11 @@ public class PrettyPrinter {
     }
     
     /**
+     * Minimum allowed width 
+     */
+    private static final int MIN_WIDTH = 40;
+    
+    /**
      * Horizontal rule
      */
     private final HorizontalRule horizontalRule = new HorizontalRule('*');
@@ -421,7 +426,8 @@ public class PrettyPrinter {
     }
     
     public PrettyPrinter(int width) {
-        this.width = width;
+        this.width = Math.max(PrettyPrinter.MIN_WIDTH, width);
+        this.wrapWidth = this.width - 20;
     }
     
     /**
@@ -684,7 +690,7 @@ public class PrettyPrinter {
      */
     public PrettyPrinter add(Throwable th, int indent) {
         while (th != null) {
-            this.add("%s: %s", th.getClass().getName(), th.getMessage());
+            this.addWrapped("    %s: %s", th.getClass().getName(), th.getMessage());
             this.add(th.getStackTrace(), indent);
             th = th.getCause();
         }
@@ -776,14 +782,14 @@ public class PrettyPrinter {
     public PrettyPrinter addWrapped(int width, String format, Object... args) {
         String indent = "";
         String line = String.format(format, args).replace("\t", "    ");
-        Matcher indentMatcher = Pattern.compile("^(\\s+)(.*)$").matcher(line);
-        if (indentMatcher.matches()) {
+        Matcher indentMatcher = Pattern.compile("^(\\s+)[^\\s]").matcher(line);
+        if (indentMatcher.find()) {
             indent = indentMatcher.group(1);
         }
         
         try {
             for (String wrappedLine : this.getWrapped(width, line, indent)) {
-                this.addLine(wrappedLine);
+                this.add(wrappedLine);
             }
         } catch (Exception ex) {
             this.add(line);
@@ -795,7 +801,7 @@ public class PrettyPrinter {
         List<String> lines = new ArrayList<String>();
         
         while (line.length() > width) {
-            int wrapPoint = line.lastIndexOf(' ', width);
+            int wrapPoint = PrettyPrinter.lastBreakIndex(line, width);
             if (wrapPoint < 10) {
                 wrapPoint = width;
             }
@@ -811,6 +817,11 @@ public class PrettyPrinter {
         return lines;
     }
     
+    private static int lastBreakIndex(String line, int width) {
+        int lineBreakPos = line.lastIndexOf('\n', width);
+        return lineBreakPos > -1 ? lineBreakPos : Math.max(line.lastIndexOf(' ', width), line.lastIndexOf('\t', width));
+    }
+
     /**
      * Add a formatted key/value pair to the output
      * 
@@ -1097,6 +1108,16 @@ public class PrettyPrinter {
      */
     public PrettyPrinter log(Logger logger) {
         return this.log(logger, Level.INFO);
+    }
+    
+    /**
+     * Write this printer to the specified logger at {@link Level#INFO}
+     * 
+     * @param level log level
+     * @return fluent interface
+     */
+    public PrettyPrinter log(Level level) {
+        return this.log(LogManager.getLogger(PrettyPrinter.getDefaultLoggerName()), level);
     }
     
     /**

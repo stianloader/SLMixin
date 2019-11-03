@@ -59,6 +59,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.util.ITokenProvider;
+import org.spongepowered.asm.util.VersionNumber;
 import org.spongepowered.tools.obfuscation.interfaces.IJavadocProvider;
 import org.spongepowered.tools.obfuscation.interfaces.IMixinAnnotationProcessor;
 import org.spongepowered.tools.obfuscation.interfaces.IMixinValidator;
@@ -83,6 +84,8 @@ import com.google.common.collect.ImmutableList.Builder;
 final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider, ITypeHandleProvider, IJavadocProvider {
 
     private static final String MAPID_SYSTEM_PROPERTY = "mixin.target.mapid";
+    
+    private static final String RECOMMENDED_MIXINGRADLE_VERSION = "0.7";
 
     /**
      * Singleton instances for each ProcessingEnvironment
@@ -143,6 +146,7 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
         this.processingEnv = processingEnv;
 
         this.printMessage(Kind.NOTE, "SpongePowered MIXIN Annotation Processor Version=" + MixinBootstrap.VERSION);
+        this.checkPluginVersion(this.getOption(SupportedOptions.PLUGIN_VERSION));
 
         this.targets = this.initTargetMap();
         this.obf = new ObfuscationManager(this);
@@ -152,8 +156,26 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
             new ParentValidator(this),
             new TargetValidator(this)
         );
-
+        
         this.initTokenCache(this.getOption(SupportedOptions.TOKENS));
+    }
+
+    /**
+     * If MixinGradle is in use, check the version. This will allow us to notify
+     * the user if the version of MixinGradle is out of date relative to the
+     * Mixin library version
+     */
+    private void checkPluginVersion(String version) {
+        if (version == null) {
+            return;
+        }
+        
+        VersionNumber pluginVersion = VersionNumber.parse(version);
+        VersionNumber recommendedVersion = VersionNumber.parse(AnnotatedMixins.RECOMMENDED_MIXINGRADLE_VERSION);
+        if (pluginVersion.compareTo(recommendedVersion) < 0) {
+            this.printMessage(Kind.WARNING, String.format("MixinGradle version %s is out of date. Update to the recommended version %s",
+                    pluginVersion, recommendedVersion));
+        }
     }
 
     protected TargetMap initTargetMap() {
@@ -513,11 +535,11 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
         return annotation.getBoolean("remap", mixinClass.remap());
     }
 
-    private static boolean shouldSuppress(Element element, String suppressedBy) {
+    private static boolean shouldSuppress(Element element, SuppressedBy suppressedBy) {
         if (element == null || suppressedBy == null) {
             return false;
         }
-        if (AnnotationHandle.of(element, SuppressWarnings.class).<String>getList().contains(suppressedBy)) {
+        if (AnnotationHandle.of(element, SuppressWarnings.class).<String>getList().contains(suppressedBy.getToken())) {
             return true;
         }
         return AnnotatedMixins.shouldSuppress(element.getEnclosingElement(), suppressedBy);
@@ -545,7 +567,7 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
      * Print a message to the AP messager
      */
     @Override
-    public void printMessage(Kind kind, CharSequence msg, Element element, String suppressedBy) {
+    public void printMessage(Kind kind, CharSequence msg, Element element, SuppressedBy suppressedBy) {
         if (kind != Kind.WARNING || !AnnotatedMixins.shouldSuppress(element, suppressedBy)) {
             this.processingEnv.getMessager().printMessage(kind, msg, element);
         }
@@ -563,7 +585,7 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
      * Print a message to the AP messager
      */
     @Override
-    public void printMessage(Kind kind, CharSequence msg, Element element, AnnotationMirror annotation, String suppressedBy) {
+    public void printMessage(Kind kind, CharSequence msg, Element element, AnnotationMirror annotation, SuppressedBy suppressedBy) {
         if (kind != Kind.WARNING || !AnnotatedMixins.shouldSuppress(element, suppressedBy)) {
             this.processingEnv.getMessager().printMessage(kind, msg, element, annotation);
         }
@@ -581,7 +603,8 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
      * Print a message to the AP messager
      */
     @Override
-    public void printMessage(Kind kind, CharSequence msg, Element element, AnnotationMirror annotation, AnnotationValue value, String suppressedBy) {
+    public void printMessage(Kind kind, CharSequence msg, Element element, AnnotationMirror annotation, AnnotationValue value,
+            SuppressedBy suppressedBy) {
         if (kind != Kind.WARNING || !AnnotatedMixins.shouldSuppress(element, suppressedBy)) {
             this.processingEnv.getMessager().printMessage(kind, msg, element, annotation, value);
         }

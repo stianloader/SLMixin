@@ -147,21 +147,18 @@ public class ModifyVariableInjector extends Injector {
         Context context = new Context(this.returnType, this.discriminator.isArgsOnly(), target, node.getCurrentTarget());
         
         if (this.discriminator.printLVT()) {
-            this.printLocals(context);
+            this.printLocals(target, context);
         }
         
-        String handlerDesc = Bytecode.getDescriptor(new Type[] { this.returnType }, this.returnType);
-        if (!handlerDesc.equals(this.methodNode.desc)) {
-            throw new InvalidInjectionException(this.info, "Variable modifier " + this + " has an invalid signature, expected " + handlerDesc
-                    + " but found " + this.methodNode.desc);
-        }
-
+        InjectorData handler = new InjectorData(target, "handler", false);
+        this.validateParams(handler, this.returnType, this.returnType);
+        
         Extension extraStack = target.extendStack();
         
         try {
             int local = this.discriminator.findLocal(context);
             if (local > -1) {
-                this.inject(context, extraStack, local);
+                this.inject(context, handler, extraStack, local);
             }
         } catch (InvalidImplicitDiscriminatorException ex) {
             if (this.discriminator.printLVT()) {
@@ -178,17 +175,18 @@ public class ModifyVariableInjector extends Injector {
     /**
      * Pretty-print local variable information to stderr
      */
-    private void printLocals(final Context context) {
-        SignaturePrinter handlerSig = new SignaturePrinter(this.methodNode.name, this.returnType, this.methodArgs, new String[] { "var" });
+    private void printLocals(Target target, Context context) {
+        SignaturePrinter handlerSig = new SignaturePrinter(this.info.getMethodName(), this.returnType, this.methodArgs, new String[] { "var" });
         handlerSig.setModifiers(this.methodNode);
 
         new PrettyPrinter()
             .kvWidth(20)
             .kv("Target Class", this.classNode.name.replace('/', '.'))
             .kv("Target Method", context.target.method.name)
-            .kv("Callback Name", this.methodNode.name)
+            .kv("Callback Name", this.info.getMethodName())
             .kv("Capture Type", SignaturePrinter.getTypeName(this.returnType, false))
-            .kv("Instruction", "%s %s", context.node.getClass().getSimpleName(), Bytecode.getOpcodeName(context.node.getOpcode())).hr()
+            .kv("Instruction", "[%d] %s %s", target.insns.indexOf(context.node), context.node.getClass().getSimpleName(),
+                    Bytecode.getOpcodeName(context.node.getOpcode())).hr()
             .kv("Match mode", this.discriminator.isImplicit(context) ? "IMPLICIT (match single)" : "EXPLICIT (match by criteria)")
             .kv("Match ordinal", this.discriminator.getOrdinal() < 0 ? "any" : this.discriminator.getOrdinal())
             .kv("Match index", this.discriminator.getIndex() < context.baseArgIndex ? "any" : this.discriminator.getIndex())
@@ -205,7 +203,7 @@ public class ModifyVariableInjector extends Injector {
      * @param extraStack stack extension
      * @param local local variable to capture
      */
-    private void inject(final Context context, Extension extraStack, final int local) {
+    private void inject(final Context context, InjectorData handler, Extension extraStack, final int local) {
         if (!this.isStatic) {
             context.insns.add(new VarInsnNode(Opcodes.ALOAD, 0));
             extraStack.add();
@@ -213,6 +211,11 @@ public class ModifyVariableInjector extends Injector {
         
         context.insns.add(new VarInsnNode(this.returnType.getOpcode(Opcodes.ILOAD), local));
         extraStack.add();
+
+        if (handler.captureTargetArgs > 0) {
+            this.pushArgs(handler.target.arguments, context.insns, handler.target.getArgIndices(), 0, handler.captureTargetArgs, extraStack);
+        }
+        
         this.invokeHandler(context.insns);
         context.insns.add(new VarInsnNode(this.returnType.getOpcode(Opcodes.ISTORE), local));
     }

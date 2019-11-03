@@ -31,6 +31,8 @@ import java.lang.annotation.Target;
 
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.points.BeforeFieldAccess;
+import org.spongepowered.asm.mixin.injection.points.BeforeInvoke;
+import org.spongepowered.asm.mixin.injection.points.BeforeNew;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelector;
 import org.spongepowered.asm.mixin.injection.throwables.InjectionError;
 import org.spongepowered.asm.mixin.injection.throwables.InvalidInjectionException;
@@ -41,7 +43,7 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  * method call, field access or object construction (via the <tt>new</tt>
  * keyword) to the method decorated with this annotation.</p>
  * 
- * <h4>Method Redirect Mode</h4>
+ * <h3>Method Redirect Mode</h3>
  * 
  * <p>The handler method signature must match the hooked method precisely
  * <b>but</b> prepended with an arg of the owning object's type to accept the
@@ -65,7 +67,8 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  * </blockquote>
  * 
  * <p>For obvious reasons this does not apply for static methods, for static
- * methods it is sufficient that the signature simply match the hooked method.
+ * methods it is sufficient that the signature simply match the redirected
+ * method.
  * </p>
  * 
  * <p>It is also possible to capture the arguments of the target method in
@@ -78,7 +81,12 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  *    int someInt, String someString)</pre>
  * </blockquote>
  * 
- * <h4>Field Access Redirect Mode</h4>
+ * <p>All arguments of a method redirect handler, and the return type, can be
+ * decorated with {@link Coerce} if - for example - a package-private class
+ * needs to be coerced to a duck interface or to (for example) <tt>Object</tt>.
+ * </p>
+ * 
+ * <h3>Field Access Redirect Mode</h3>
  * 
  * <p>The handler method signature varies depending on whether the redirector is
  * handling a field <b>write</b> (<tt>PUTFIELD</tt>, <tt>PUTSTATIC</tt>) or a
@@ -91,21 +99,22 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  *   </tr>
  *   <tr>
  *     <td>Read static field (<tt>GETSTATIC</tt>)</td>
- *     <td><code>private <b>FieldType</b> getFieldValue()</code></td>
+ *     <td><code>private static <b>FieldType</b> getFieldValue()</code></td>
  *   </tr>
  *   <tr>
  *     <td>Read instance field (<tt>GETFIELD</tt>)</td>
  *     <td><code>private <b>FieldType</b> getFieldValue(<b>OwnerType</b>
- *     owner)</code></td>
+ *       owner)</code></td>
  *   </tr>
  *   <tr>
  *     <td>Write static field (<tt>PUTSTATIC</tt>)</td>
- *     <td><code>private void setFieldValue(<b>FieldType</b> value)</code></td>
+ *     <td><code>private static void setFieldValue(<b>FieldType</b> value)
+ *       </code></td>
  *   </tr>
  *   <tr>
  *     <td>Write instance field (<tt>PUTFIELD</tt>)</td>
  *     <td><code>private void setFieldValue(<b>OwnerType</b>
- *     owner, <b>FieldType</b> value)</code></td>
+ *       owner, <b>FieldType</b> value)</code></td>
  *   </tr>
  * </table>
  * 
@@ -114,7 +123,13 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  * the code above this would be the <em>someInt</em> and <em>someString</em>
  * arguments) by appending the arguments to the method signature.</p>
  * 
- * <h4>Array Element Access Redirect Mode</h4>
+ * <p>All arguments of a field redirect handler, including the field type
+ * itself, can be decorated with {@link Coerce} if - for example - a
+ * package-private class needs to be coerced to a duck interface or to (for
+ * example) <tt>Object</tt>.
+ * </p>
+ * 
+ * <h3>Array Element Access Redirect Mode</h3>
  * 
  * <p>For fields of an array type, it is possible to redirect the access to the
  * actual array field itself using the behaviour above. However it is also
@@ -155,7 +170,7 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  * {@link BeforeFieldAccess BeforeFieldAccess args} for details
  * on matching array accesses using the <tt>FIELD</tt> injection point.</p>
  * 
- * <h4>Array Length Redirect Mode</h4>
+ * <h3>Array Length Redirect Mode</h3>
  * 
  * <p>For fields of an array type, it is possible to redirect the call to the
  * builtin pseudo-property <tt>length</tt>. To do so, specify the argument
@@ -174,28 +189,105 @@ import org.spongepowered.asm.util.ConstraintParser.Constraint;
  * private <b>int</b> getLength(<b>ElementType</b>[][] array, int baseDim)
  * </code></blockquote>
  * 
- * <h4>Constructor Redirect Mode</h4>
+ * <h3>New Object Redirect Mode (Factory Mode)</h3>
+ * 
+ * <p>Redirecting object creation requires redirection of the <tt>NEW</tt>
+ * operation and constructor call. Your handler method should target the <tt>NEW
+ * </tt> opcode using the {@link BeforeNew} Injection Point and construct an
+ * appropriate object. The factory method <b>must return a new object</b> and
+ * <b>must not</b> return <tt>null</tt> since the contract of the <tt>new</tt>
+ * opcode does not allow for the possibility of <tt>null</tt>. Your factory may
+ * throw an exception however.</p>
+ * 
+ * <p>Note that {@link BeforeNew} differs from {@link BeforeInvoke} in that the
+ * shape of <tt>target</tt> should contain <em>only</em> an <tt>owner</tt> (to
+ * target any ctor of the specified class) or <em>only</em> a <tt>descriptor
+ * </tt> consisting of the constructor descriptor with the return type changed
+ * from <tt>void</tt> (<tt>V</tt>) to the type of object being constructed. In
+ * other words to redirect an object creation for an object <tt>Foo</tt>:</p>
+ * 
+ * <blockquote><pre>package baz.bar;
+ * 
+ *class Foo {
+ *    private final int x, y;
+ *  
+ *    // ctor we wish to hook
+ *    Foo(int x, int y) {
+ *        this.x = x;
+ *        this.y = y;
+ *    }
+ *}</pre>
+ * </blockquote>
+ * 
+ * <p>Valid signatures for this ctor would be:</p>
+ * 
+ * <ul>
+ *   <li><tt>Lbaz/bar/Foo;</tt> - valid because Foo only has one ctor</li>
+ *   <li><tt>(II)Lbaz/bar/Foo;</tt> - includes signature of specific ctor</li>
+ * </ul>
  * 
  * <p>The handler method signature must match the constructor being redirected
  * and the return type must match the type of object being constructed. For
- * example to redirect the following constructor call:</p>
+ * example to redirect the following object creation call:</p>
  * 
- * <blockquote><pre>public void baz(int someInt, String someString) {
+ * <blockquote><pre>public void exampleFunc(String someString, int dx, int dy) {
  *    // Hooking this constructor
- *    Foo someObject = new Foo("bar");
+ *    Foo someFoo = new Foo(dx * 10, dy * 10);
  *}</pre>
  * </blockquote>
  * 
  * <p>The signature of the handler method should be:</p>
  * 
  * <blockquote>
- *      <pre>public Foo constructFoo(String arg1)</pre>
+ *      <pre>public Foo constructFoo(int x, int y)</pre>
  * </blockquote>
  * 
  * <p>Note that like other redirectors, it is possible to capture the target
- * method's arguments by appending them to the handler method's signature.</p>
+ * method's arguments by appending them to the handler method's signature:</p>
  * 
- * <h4>A note on <tt>static</tt> modifiers for handler methods</h4>
+ * <blockquote>
+ *      <tt>public Foo constructFoo(int x, int y, String someString, int dx,
+ *      int dy)</tt>
+ * </blockquote>
+ * 
+ * <h3><tt>instanceof</tt> Redirect Mode</h3>
+ * 
+ * <p>An <tt>instanceof</tt> check is a boolean operation where an object on the
+ * stack is compared with a class literal compiled directly into the bytecode.
+ * The check can be redirected in one of two ways: logic redirection or class
+ * type redirection. For the following example code:</p>
+ *  
+ * <blockquote><pre>if (reference instanceof Foo) {</pre></blockquote>
+ *
+ * <p>To perform a <em>logic redirection</em>, use a handler with the following
+ * signature returning <tt>boolean</tt>:</p>
+ * 
+ * <blockquote><pre>public boolean onInstanceOf(Object reference, Class clFoo) {
+ *    return reference instanceof ADifferentClass;
+ *}</pre></blockquote>
+ *
+ * <p>Note that the entire check is moved into the redirect method, and the
+ * <tt>boolean</tt> return value is used in place of the previous <tt>instanceof
+ * </tt> check. To perform a <em>class type redirection</em> instead, construct
+ * your handler as follows:</p>
+ *
+ * <blockquote><pre>public Class onInstanceOf(Object reference, Class clFoo) {
+ *    return ADifferentClass.class;
+ *}</pre></blockquote>
+ *
+ * <p>Note that this results in the injected code being less efficient, because
+ * the <tt>instanceof</tt> opcode is replaced with discrete code similar to <tt>
+ * reference != null && yourClass.isAssignableFrom(reference.getClass())</tt> in
+ * the target method body.</p>
+ * 
+ * <p>The arguments to an <tt>instanceof</tt> redirect handler <b>must always be
+ * <tt>Object, Class</tt> even if the variable type is known</b>. This is
+ * because the type of variable on the stack cannot be determined without
+ * relatively expensive analysis, which is redundant given the redirect
+ * handler's role. If you need to cast-down the reference then you should do so
+ * inside your handler method.</p> 
+ *
+ * <h3>A note on <tt>static</tt> modifiers for handler methods</h3>
  *
  * <p>In general, when declaring a redirect handler the <tt>static</tt> modifier
  * of the handler method must always match the target method. The exception to

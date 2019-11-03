@@ -47,6 +47,7 @@ import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 import org.spongepowered.asm.obfuscation.RemapperChain;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.ITransformer;
+import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.service.MixinServiceAbstract;
 import org.spongepowered.asm.util.CompareUtil;
@@ -1066,6 +1067,20 @@ public final class MixinEnvironment implements ITokenProvider {
         return mixinConfigs;
     }
     
+    /**
+     * Add a mixin configuration to the blackboard
+     * 
+     * @param config Name of configuration resource to add
+     * @return fluent interface
+     * @deprecated use Mixins::addConfiguration instead
+     */
+    @Deprecated
+    public MixinEnvironment addConfiguration(String config) {
+        MixinEnvironment.logger.warn("MixinEnvironment::addConfiguration is deprecated and will be removed. Use Mixins::addConfiguration instead!");
+        Mixins.addConfiguration(config, this);
+        return this;
+    }
+
     void registerConfig(String config) {
         List<String> configs = this.getMixinConfigs();
         if (!configs.contains(config)) {
@@ -1301,7 +1316,8 @@ public final class MixinEnvironment implements ITokenProvider {
     @Deprecated
     public List<ITransformer> getTransformers() {
         MixinEnvironment.logger.warn("MixinEnvironment::getTransformers is deprecated!");
-        return (List<ITransformer>)this.service.getTransformers();
+        ITransformerProvider transformers = this.service.getTransformerProvider();
+        return transformers != null ? (List<ITransformer>)transformers.getTransformers() : Collections.<ITransformer>emptyList();
     }
 
     /**
@@ -1313,7 +1329,10 @@ public final class MixinEnvironment implements ITokenProvider {
     @Deprecated
     public void addTransformerExclusion(String name) {
         MixinEnvironment.logger.warn("MixinEnvironment::addTransformerExclusion is deprecated!");
-        this.service.addTransformerExclusion(name);
+        ITransformerProvider transformers = this.service.getTransformerProvider();
+        if (transformers != null) {
+            transformers.addTransformerExclusion(name);
+        }
     }
 
     /* (non-Javadoc)

@@ -22,26 +22,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.mixin;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.spongepowered.asm.service;
 
 /**
- * Pseudo-implements decorator for Mixins with conflicting methods in a
- * superclass to soft-implement an interface
+ * Class trackers are responsible for interacting with the class loading process
+ * to for the purposes of tracking class load activity and class load
+ * restrictions. This service component is entirely optional and services can
+ * elect to return <tt>null</tt> if the platform does not support this
+ * functionality.
  */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
-public @interface Implements {
-    
+public interface IClassTracker {
+
     /**
-     * Interfaces implemented, see javadoc in {@link Interface}
+     * Register an invalid class with the service classloader
      * 
-     * @return list of interfaces to implement
+     * @param className invalid class name
      */
-    public Interface[] value();
+    public abstract void registerInvalidClass(String className);
+
+    /**
+     * Check whether the specified class was already loaded by the service
+     * classloader
+     * 
+     * @param className class name to check
+     * @return true if the class was already loaded
+     */
+    public abstract boolean isClassLoaded(String className);
+
+    /**
+     * Check whether the specified class name is subject to any restrictions in
+     * the context of this service
+     * 
+     * @param className class name to check
+     * @return comma-separated list of restrictions, empty string if no
+     *      restrictions apply
+     */
+    public abstract String getClassRestrictions(String className);
 
 }

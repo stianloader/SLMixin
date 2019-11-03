@@ -39,6 +39,7 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
@@ -63,17 +64,18 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinReloadException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinTargetAlreadyLoadedException;
+import org.spongepowered.asm.service.IClassTracker;
 import org.spongepowered.asm.service.IMixinService;
-import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.asm.ASM;
+import org.spongepowered.asm.util.asm.MethodNodeEx;
 import org.spongepowered.asm.util.CompareUtil;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
 
-import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
@@ -84,22 +86,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     /**
      * A MethodNode in a mixin
      */
-    class MixinMethodNode extends MethodNode {
-        
-        private final String originalName;
+    class MixinMethodNode extends MethodNodeEx {
         
         public MixinMethodNode(int access, String name, String desc, String signature, String[] exceptions) {
-            super(ASM.API_VERSION, access, name, desc, signature, exceptions);
-            this.originalName = name;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("%s%s", this.originalName, this.desc);
-        }
-        
-        public String getOriginalName() {
-            return this.originalName;
+            super(access, name, desc, signature, exceptions, MixinInfo.this);
         }
 
         public boolean isInjector() {
@@ -120,10 +110,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
         public AnnotationNode getInjectorAnnotation() {
             return InjectionInfo.getInjectorAnnotation(MixinInfo.this, this);
-        }
-        
-        public IMixinInfo getOwner() {
-            return MixinInfo.this;
         }
 
     }
@@ -672,9 +658,35 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
     
     /**
-     * Mixin service
+     * Handle for a declared target on a mixin.
      */
-    private static final IMixinService classLoaderUtil = MixinService.getService();
+    static final class DeclaredTarget {
+
+        final String name;
+
+        final boolean isPrivate;
+
+        private DeclaredTarget(String name, boolean isPrivate) {
+            this.name = name;
+            this.isPrivate = isPrivate;
+        }
+
+        @Override
+        public String toString() {
+            return this.name;
+        }
+
+        static DeclaredTarget of(Object target, MixinInfo info) {
+            if (target instanceof String) {
+                String remappedName = info.remapClassName((String)target);
+                return remappedName != null ? new DeclaredTarget(remappedName, true) : null;
+            } else if (target instanceof Type) {
+                return new DeclaredTarget(((Type)target).getClassName(), false);
+            }
+            return null;
+        }
+
+    }
 
     /**
      * Global order of mixin infos, used to determine ordering between mixins
@@ -719,13 +731,19 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     
     /**
      * Mixin targets, read from the {@link Mixin} annotation on the mixin class
+     * but not yet parsed in the current environment
      */
-    private final List<ClassInfo> targetClasses;
+    private final transient List<DeclaredTarget> declaredTargets;
+
+    /**
+     * Mixin targets, read from the {@link Mixin} annotation on the mixin class
+     */
+    private final transient List<ClassInfo> targetClasses = new ArrayList<ClassInfo>();
     
     /**
      * Names of target classes 
      */
-    private final List<String> targetClassNames;
+    private final List<String> targetClassNames = new ArrayList<String>();
     
     /**
      * Intrinsic order (for sorting mixins with identical priority)
@@ -778,10 +796,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * @param parent configuration which owns this mixin, the parent
      * @param name name of this mixin (class name stub)
      * @param plugin mixin config companion plugin handle
-     * @param suppressPlugin true to suppress the plugin from filtering targets
-     *      of this mixin
+     * @param ignorePlugin true to prevent the plugin from filtering targets of
+     *      this mixin
      */
-    MixinInfo(IMixinService service, MixinConfig parent, String name, PluginHandle plugin, boolean suppressPlugin) {
+    MixinInfo(IMixinService service, MixinConfig parent, String name, PluginHandle plugin, boolean ignorePlugin) {
         this.service = service;
         this.parent = parent;
         this.name = name;
@@ -806,15 +824,32 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             // Inject the mixin class name into the LaunchClassLoader's invalid
             // classes set so that any classes referencing the mixin directly will
             // cause the game to crash
-            MixinInfo.classLoaderUtil.registerInvalidClass(this.className);
+            IClassTracker tracker = this.service.getClassTracker();
+            if (tracker != null) {
+                tracker.registerInvalidClass(this.className);
+            }
         }
         
         // Read the class bytes and transform
         try {
             this.priority = this.readPriority(this.pendingState.getClassNode());
             this.virtual = this.readPseudo(this.pendingState.getValidationClassNode());
-            this.targetClasses = this.readTargetClasses(this.pendingState.getValidationClassNode(), suppressPlugin);
-            this.targetClassNames = Collections.<String>unmodifiableList(Lists.transform(this.targetClasses, Functions.toStringFunction()));
+            this.declaredTargets = this.readDeclaredTargets(this.pendingState.getValidationClassNode(), ignorePlugin);
+        } catch (InvalidMixinException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new InvalidMixinException(this, ex);
+        }
+    }
+
+    /**
+     * Parse the declared targets from the annotation into ClassInfo instances
+     * and perform initial validation of each target
+     */
+    void parseTargets() {
+        try {
+            this.targetClasses.addAll(this.readTargetClasses(this.declaredTargets));
+            this.targetClassNames.addAll(Lists.transform(this.targetClasses, Functions.toStringFunction()));
         } catch (InvalidMixinException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -839,15 +874,15 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
 
     /**
-     * Read the target class names from the {@link Mixin} annotation
+     * Read the declared target class names from the {@link Mixin} annotation
      * 
      * @param classNode mixin classnode
-     * @param suppressPlugin true to suppress plugin filtering targets
+     * @param ignorePlugin true to suppress plugin filtering targets
      * @return target class list read from classNode
      */
-    protected List<ClassInfo> readTargetClasses(MixinClassNode classNode, boolean suppressPlugin) {
+    protected List<DeclaredTarget> readDeclaredTargets(MixinClassNode classNode, boolean ignorePlugin) {
         if (classNode == null) {
-            return Collections.<ClassInfo>emptyList();
+            return Collections.<DeclaredTarget>emptyList();
         }
         
         AnnotationNode mixin = Annotations.getInvisible(classNode, Mixin.class);
@@ -855,75 +890,98 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             throw new InvalidMixinException(this, String.format("The mixin '%s' is missing an @Mixin annotation", this.className));
         }
         
-        List<ClassInfo> targets = new ArrayList<ClassInfo>();
-        List<org.objectweb.asm.Type> publicTargets = Annotations.getValue(mixin, "value");
-        List<String> privateTargets = Annotations.getValue(mixin, "targets");
-
-        if (publicTargets != null) {
-            this.readTargets(targets, Lists.transform(publicTargets, new Function<org.objectweb.asm.Type, String>() {
-                @Override
-                public String apply(org.objectweb.asm.Type input) {
-                    return input.getClassName();
-                }
-            }), suppressPlugin, false);
-        }
-        
-        if (privateTargets != null) {
-            this.readTargets(targets, Lists.transform(privateTargets, new Function<String, String>() {
-                @Override
-                public String apply(String input) {
-                    return MixinInfo.this.getParent().remapClassName(MixinInfo.this.getClassRef(), input);
-                }
-            }), suppressPlugin, true);
-        }
-        
-        return targets;
-    }
-
-    /**
-     * Reads a target list into the outTargets list
-     */
-    private void readTargets(Collection<ClassInfo> outTargets, Collection<String> inTargets, boolean suppressPlugin, boolean checkPublic) {
-        for (String targetRef : inTargets) {
-            String targetName = targetRef.replace('/', '.');
-            if (MixinInfo.classLoaderUtil.isClassLoaded(targetName) && !this.isReloading()) {
-                String message = String.format("Critical problem: %s target %s was loaded too early.", this, targetName);
+        IClassTracker tracker = this.service.getClassTracker();
+        List<DeclaredTarget> declaredTargets = new ArrayList<DeclaredTarget>();
+        for (Object target : this.readTargets(mixin)) {
+            DeclaredTarget declaredTarget = DeclaredTarget.of(target, this);
+            if (declaredTarget == null) {
+                continue;
+            }
+            if (tracker != null && tracker.isClassLoaded(declaredTarget.name) && !this.isReloading()) {
+                String message = String.format("Critical problem: %s target %s was loaded too early.", this, declaredTarget.name);
                 if (this.parent.isRequired()) {
-                    throw new MixinTargetAlreadyLoadedException(this, message, targetName);
+                    throw new MixinTargetAlreadyLoadedException(this, message, declaredTarget.name);
                 }
                 this.logger.error(message);
             }
             
-            if (this.shouldApplyMixin(suppressPlugin, targetName)) {
-                ClassInfo targetInfo = this.getTarget(targetName, checkPublic);
-                if (targetInfo != null && !outTargets.contains(targetInfo)) {
-                    outTargets.add(targetInfo);
-                    targetInfo.addMixin(this);
-                }
+            if (this.shouldApplyMixin(ignorePlugin, declaredTarget.name)) {
+                declaredTargets.add(declaredTarget);
             }
         }
+        return declaredTargets;
     }
 
-    private boolean shouldApplyMixin(boolean suppressPlugin, String targetName) {
+    /**
+     * Combine the public and private mixin targets from the supplied annotation
+     * and return them as an interable collection
+     *
+     * @param mixin mixin annotation
+     * @return target list
+     */
+    private Iterable<Object> readTargets(AnnotationNode mixin) {
+        Iterable<Object> publicTargets = Annotations.getValue(mixin, "value");
+        Iterable<Object> privateTargets = Annotations.getValue(mixin, "targets");
+        if (publicTargets == null && privateTargets == null) {
+            return Collections.<Object>emptyList();
+        }
+        if (publicTargets == null) {
+            return privateTargets;
+        }
+        return privateTargets == null ? publicTargets : Iterables.concat(publicTargets, privateTargets);
+    }
+
+    /**
+     * Check whether this mixin should apply to the specified taret
+     *
+     * @param ignorePlugin true to ignore the config plugin
+     * @param targetName target class name
+     * @return true if the mixin should be a pplied
+     */
+    private boolean shouldApplyMixin(boolean ignorePlugin, String targetName) {
         Section pluginTimer = this.profiler.begin("plugin");
-        boolean result = suppressPlugin || this.plugin.shouldApplyMixin(targetName, this.className);
+        boolean result = ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className);
         pluginTimer.end();
         return result;
     }
 
-    private ClassInfo getTarget(String targetName, boolean checkPublic) throws InvalidMixinException {
-        ClassInfo targetInfo = ClassInfo.forName(targetName);
+    /**
+     * Read and parse target classes from the supplied class node
+     *
+     * @param classNode class node to parse
+     * @param ignorePlugin true to ignore the config plugin when deciding
+     *      whether to apply declared targets
+     * @return new list of target classes
+     */
+    List<ClassInfo> readTargetClasses(MixinClassNode classNode, boolean ignorePlugin) {
+        return this.readTargetClasses(this.readDeclaredTargets(classNode, ignorePlugin));
+    }
+
+    private List<ClassInfo> readTargetClasses(List<DeclaredTarget> declaredTargets) throws InvalidMixinException {
+        List<ClassInfo> targetClasses = new ArrayList<ClassInfo>();
+        for (DeclaredTarget target : declaredTargets) {
+            ClassInfo targetClass = this.getTargetClass(target);
+            if (targetClass != null) {
+                targetClasses.add(targetClass);
+                targetClass.addMixin(this);
+            }
+        }
+        return targetClasses;
+    }
+
+    private ClassInfo getTargetClass(DeclaredTarget target) throws InvalidMixinException {
+        ClassInfo targetInfo = ClassInfo.forName(target.name);
         if (targetInfo == null) {
             if (this.isVirtual()) {
-                this.logger.debug("Skipping virtual target {} for {}", targetName, this);
+                this.logger.debug("Skipping virtual target {} for {}", target.name, this);
             } else {
-                this.handleTargetError(String.format("@Mixin target %s was not found %s", targetName, this));
+                this.handleTargetError(String.format("@Mixin target %s was not found %s", target.name, this));
             }
             return null;
         }
-        this.type.validateTarget(targetName, targetInfo);
-        if (checkPublic && targetInfo.isPublic() && !this.isVirtual()) {
-            this.handleTargetError(String.format("@Mixin target %s is public in %s and should be specified in value", targetName, this));
+        this.type.validateTarget(target.name, targetInfo);
+        if (target.isPrivate && targetInfo.isPublic() && !this.isVirtual()) {
+            this.handleTargetError(String.format("@Mixin target %s is public in %s and should be specified in value", target.name, this));
         }
         return targetInfo;
     }
@@ -962,6 +1020,19 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
     private boolean isReloading() {
         return this.pendingState instanceof Reloaded;
+    }
+
+    String remapClassName(String className) {
+        return this.parent.remapClassName(this.getClassRef(), className);
+    }
+
+    public boolean hasDeclaredTarget(String targetClass) {
+        for (DeclaredTarget declaredTarget : this.declaredTargets) {
+            if (targetClass.equals(declaredTarget.name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1073,6 +1144,13 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
     
     /**
+     * True if the parent mixin config is marked as required
+     */
+    public boolean isRequired() {
+        return this.parent.isRequired();
+    }
+
+    /**
      * Get the logging level for this mixin
      */
     public Level getLoggingLevel() {
@@ -1096,11 +1174,18 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
     
     /**
+     * Get the target class names as declared for this mixin
+     */
+    List<String> getDeclaredTargetClasses() {
+        return Collections.<String>unmodifiableList(Lists.transform(this.declaredTargets, Functions.toStringFunction()));
+    }
+
+    /**
      * Get the target class names for this mixin
      */
     @Override
     public List<String> getTargetClasses() {
-        return this.targetClassNames;
+        return Collections.<String>unmodifiableList(this.targetClassNames);
     }
     
     /**
@@ -1165,9 +1250,12 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         ClassNode classNode = null;
 
         try {
-            String restrictions = this.service.getClassRestrictions(mixinClassName);
-            if (restrictions.length() > 0) {
-                this.logger.error("Classloader restrictions [{}] encountered loading {}, name: {}", restrictions, this, mixinClassName);
+            IClassTracker tracker = this.service.getClassTracker();
+            if (tracker != null) {
+                String restrictions = tracker.getClassRestrictions(mixinClassName);
+                if (restrictions.length() > 0) {
+                    this.logger.error("Classloader restrictions [{}] encountered loading {}, name: {}", restrictions, this, mixinClassName);
+                }
             }
             classNode = this.service.getBytecodeProvider().getClassNode(mixinClassName, true);
         } catch (ClassNotFoundException ex) {

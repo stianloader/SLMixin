@@ -109,15 +109,15 @@ dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
     def log4j2 = 'org.apache.logging.log4j:log4j-core:2.0-beta9'
     
-    compile guava
-    compile log4j2
+    implementation guava
+    implementation log4j2
     compile 'com.google.code.gson:gson:2.2.4'
     if (Float.parseFloat(asmVersion) < 6) {
         compile "org.ow2.asm:asm-debug-all:$asmVersion"
     }
-    compile "org.ow2.asm:asm-tree:$asmVersion"
-    compile "org.ow2.asm:asm-commons:$asmVersion"
-    compile "org.ow2.asm:asm-util:$asmVersion"
+    implementation "org.ow2.asm:asm-tree:$asmVersion"
+    implementation "org.ow2.asm:asm-commons:$asmVersion"
+    implementation "org.ow2.asm:asm-util:$asmVersion"
 
     thinJar "org.ow2.asm:asm-tree:$asmVersion"
     thinJar "org.ow2.asm:asm-util:$asmVersion"
@@ -133,18 +133,22 @@ dependencies {
     
     // AP extension example
     exampleCompile configurations.compile
+    exampleImplementation configurations.implementation
 
     // Fernflower decompiler
     fernflowerCompile configurations.compile
+	fernflowerImplementation configurations.implementation
     fernflowerCompile 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
     // LegacyLauncher service
     launchwrapperCompile configurations.compile
+    launchwrapperImplementation configurations.implementation
     launchwrapperCompile ('net.minecraft:launchwrapper:1.11') {
         exclude module: 'lwjgl'
     }
     
     modlauncherCompile configurations.compile
+    modlauncherImplementation configurations.implementation
     modlauncherCompile 'net.sf.jopt-simple:jopt-simple:5.0.4'
     modlauncherCompile "org.ow2.asm:asm-tree:$modlauncherAsmVersion"
     modlauncherCompile "org.ow2.asm:asm-commons:$modlauncherAsmVersion"
@@ -155,7 +159,8 @@ dependencies {
     
     // agent
     agentCompile configurations.compile
-    
+    agentImplementation configurations.implementation
+
     // asm bridge
     bridgeCompile log4j2
     bridgeCompile "org.ow2.asm:asm-commons:$legacyForgeAsmVersion"
@@ -271,12 +276,12 @@ build.dependsOn(shadowJar)
 if (project.doSignJar) {
     // Define signjar task    
     task signJar() {
-        inputs.files(jar.outputs)
-        outputs.files jar.outputs.files.collect {
+        inputs.files(stagingJar.outputs)
+        outputs.files stagingJar.outputs.files.collect {
             new File(it.parent, it.name.replace('-unsigned', ''))
         }
         doLast {
-            jar.outputs.files.each {
+            stagingJar.outputs.files.each {
                 ant.signjar(
                     alias: project.keyStoreCert,
                     jar: it,
@@ -285,7 +290,8 @@ if (project.doSignJar) {
                     storepass: project.keyStoreSecret,
                     keypass: project.keyStoreSecret,
                     tsaurl: project.timestampAuthority,
-                    preservelastmodified: 'true'
+                    preservelastmodified: 'true',
+                    verbose: true
                 )
             }
         }
