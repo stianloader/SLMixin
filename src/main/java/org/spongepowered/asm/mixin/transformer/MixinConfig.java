@@ -550,7 +550,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
 
             InjectionPoint.register((Class<? extends InjectionPoint>)injectionPointClass);
         } catch (Throwable th) {
-            this.logger.catching(th);
+            throw th;
         }
     }
 
