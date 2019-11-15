@@ -44,6 +44,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
 import org.spongepowered.asm.mixin.struct.MemberRef;
+import org.spongepowered.asm.mixin.throwables.ClassMetadataNotFoundException;
 import org.spongepowered.asm.mixin.throwables.MixinException;
 import org.spongepowered.asm.mixin.transformer.ActivityStack.Activity;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
@@ -576,7 +577,7 @@ class MixinPreProcessorStandard {
         Activity fieldActivity = this.activities.begin("?");
         for (Iterator<FieldNode> iter = this.classNode.getFields().iterator(); iter.hasNext();) {
             FieldNode mixinField = iter.next();
-            fieldActivity.next(String.format("%s:%s", mixinField.name, mixinField.desc));
+            fieldActivity.next("%s:%s", mixinField.name, mixinField.desc);
             AnnotationNode shadow = Annotations.getVisible(mixinField, Shadow.class);
             boolean isShadow = shadow != null;
             
