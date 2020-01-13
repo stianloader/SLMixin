@@ -109,8 +109,8 @@ dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
     def log4j2 = 'org.apache.logging.log4j:log4j-core:2.0-beta9'
     
-    implementation guava
-    implementation log4j2
+    compile guava
+    compile log4j2
     compile 'com.google.code.gson:gson:2.2.4'
     if (Float.parseFloat(asmVersion) < 6) {
         compile "org.ow2.asm:asm-debug-all:$asmVersion"
