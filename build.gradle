@@ -25,7 +25,7 @@ version = buildVersion + "+mixin." + upstreamMixinVersion
 
 
 def ENV = System.getenv()
-if (!ENV.BUILD_NUMBER) {
+if (!ENV.CI) {
     version = version + "-local"
 }
 
