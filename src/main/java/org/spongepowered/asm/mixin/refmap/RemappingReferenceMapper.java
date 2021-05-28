@@ -67,7 +67,7 @@ public final class RemappingReferenceMapper implements IClassReferenceMapper, IR
         this.refMap = refMap;
         this.remapper = env.getRemappers();
 
-        RemappingReferenceMapper.logger.info("Remapping refMap {} using remapper chain", refMap.getResourceName());
+        RemappingReferenceMapper.logger.debug("Remapping refMap {} using remapper chain", refMap.getResourceName());
     }
 
     /* (non-Javadoc)
