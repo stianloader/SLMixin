@@ -1016,7 +1016,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
         this.type.validateTarget(target.name, targetInfo);
         if (target.isPrivate && targetInfo.isPublic() && !this.isVirtual()) {
-            this.logger.debug(String.format("@Mixin target %s is public in %s and should be specified in value", target.name, this));
+            this.handleTargetError(String.format("@Mixin target %s is public in %s and should be specified in value", target.name, this));
         }
         return targetInfo;
     }
