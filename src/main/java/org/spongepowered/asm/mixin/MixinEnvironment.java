@@ -56,6 +56,7 @@ import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.IConsumer;
 import org.spongepowered.asm.util.ITokenProvider;
 import org.spongepowered.asm.util.JavaVersion;
+import org.spongepowered.asm.util.LanguageFeatures;
 import org.spongepowered.asm.util.PrettyPrinter;
 import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.perf.Profiler;
@@ -591,12 +592,12 @@ public final class MixinEnvironment implements ITokenProvider {
     public static enum CompatibilityLevel {
         
         /**
-         * Java 6 and above
+         * Java 6 (1.6) or above is required
          */
         JAVA_6(6, Opcodes.V1_6, 0),
         
         /**
-         * Java 7 and above
+         * Java 7 (1.7) or above is required
          */
         JAVA_7(7, Opcodes.V1_7, 0) {
 
@@ -608,9 +609,9 @@ public final class MixinEnvironment implements ITokenProvider {
         },
         
         /**
-         * Java 8 and above
+         * Java 8 (1.8) or above is required
          */
-        JAVA_8(8, Opcodes.V1_8, LanguageFeature.METHODS_IN_INTERFACES) {
+        JAVA_8(8, Opcodes.V1_8, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES) {
 
             @Override
             boolean isSupported() {
@@ -620,9 +621,10 @@ public final class MixinEnvironment implements ITokenProvider {
         },
         
         /**
-         * Java 9 and above
+         * Java 9 or above is required
          */
-        JAVA_9(9, Opcodes.V9, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES) {
+        JAVA_9(9, Opcodes.V9, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES) {
             
             @Override
             boolean isSupported() {
@@ -632,9 +634,10 @@ public final class MixinEnvironment implements ITokenProvider {
         },
         
         /**
-         * Java 10 and above
+         * Java 10 or above is required
          */
-        JAVA_10(10, Opcodes.V10, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES) {
+        JAVA_10(10, Opcodes.V10, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES) {
             
             @Override
             boolean isSupported() {
@@ -644,10 +647,10 @@ public final class MixinEnvironment implements ITokenProvider {
         },
         
         /**
-         * Java 10 and above
+         * Java 11 or above is required
          */
-        JAVA_11(11, Opcodes.V11, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_11(11, Opcodes.V11, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
             
             @Override
             boolean isSupported() {
@@ -659,8 +662,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 12 and above
          */
-        JAVA_12(12, Opcodes.V12, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_12(12, Opcodes.V12, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -672,8 +675,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 13 and above
          */
-        JAVA_13(13, Opcodes.V13, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_13(13, Opcodes.V13, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -685,8 +688,8 @@ public final class MixinEnvironment implements ITokenProvider {
 	    /**
 	     * Java 14 and above
 	     */
-	    JAVA_14(14, Opcodes.V14, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-		    | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+	    JAVA_14(14, Opcodes.V14, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+		    | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
 		    @Override
 		    boolean isSupported() {
@@ -698,8 +701,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 16 and above
          */
-        JAVA_15(15, Opcodes.V15, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_15(15, Opcodes.V15, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -711,8 +714,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 16 and above
          */
-        JAVA_16(16, Opcodes.V16, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_16(16, Opcodes.V16, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -724,8 +727,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 17 and above
          */
-        JAVA_17(17, Opcodes.V17, LanguageFeature.METHODS_IN_INTERFACES | LanguageFeature.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeature.NESTING | LanguageFeature.DYNAMIC_CONSTANTS) {
+        JAVA_17(17, Opcodes.V17, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
+                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -733,33 +736,6 @@ public final class MixinEnvironment implements ITokenProvider {
             }
 
         };
-        
-        /**
-         * Bitmask values for language features supported
-         */
-        public static class LanguageFeature {
-            
-            /**
-             * Language version supports methods in interfaces
-             */
-            public static final int METHODS_IN_INTERFACES = 1;
-            
-            /**
-             * Language version supports private methods in interfaces
-             */
-            public static final int PRIVATE_METHODS_IN_INTERFACES = 2;
-            
-            /**
-             * Native nesting
-             */
-            public static final int NESTING = 4;
-            
-            /**
-             * Dynamic constants
-             */
-            public static final int DYNAMIC_CONSTANTS = 8;
-
-        }
         
         /**
          * Default compatibility level to use if not specified by the service 
@@ -790,11 +766,35 @@ public final class MixinEnvironment implements ITokenProvider {
         
         /**
          * Class version expected at this compatibility level
+         * 
+         * @deprecated Use getClassVersion
          */
+        @Deprecated
         public int classVersion() {
             return this.classVersion;
         }
         
+        /**
+         * Class version expected at this compatibility level
+         */
+        public int getClassVersion() {
+            return this.classVersion;
+        }
+        
+        /**
+         * Get the major class version expected at this compatibility level
+         */
+        public int getClassMajorVersion() {
+            return this.classVersion & 0xFFFF;
+        }
+        
+        /**
+         * Get all supported language features
+         */
+        public int getLanguageFeatures() {
+            return this.languageFeatures;
+        }
+
         /**
          * Get whether this environment supports non-abstract methods in
          * interfaces, true in Java 1.8 and above
@@ -803,18 +803,18 @@ public final class MixinEnvironment implements ITokenProvider {
          */
         @Deprecated
         public boolean supportsMethodsInInterfaces() {
-            return (this.languageFeatures & LanguageFeature.METHODS_IN_INTERFACES) != 0;
+            return (this.languageFeatures & LanguageFeatures.METHODS_IN_INTERFACES) != 0;
         }
         
         /**
-         * Get whether the specified {@link LanguageFeature} is supported by
+         * Get whether the specified {@link LanguageFeatures} is supported by
          * this runtime.
          * 
-         * @param languageFeature language feature (or features) to check
+         * @param languageFeatures language feature (or features) to check
          * @return true if all specified language features are supported
          */
-        public boolean supports(int languageFeature) {
-            return (this.languageFeatures & languageFeature) != 0;
+        public boolean supports(int languageFeatures) {
+            return (this.languageFeatures & languageFeatures) == languageFeatures;
         }
         
         /**
@@ -863,6 +863,25 @@ public final class MixinEnvironment implements ITokenProvider {
             }
             
             return level.canElevateTo(this);
+        }
+        
+        /**
+         * Return the minimum language level required to support the specified
+         * language feature(s). Returns <tt>null</tt> if no compatibility level
+         * available can support the requested language features.
+         * 
+         * @param languageFeatures Language feature(s) to check for
+         * @return Lowest compatibility level which supports the requested
+         *      language feature, or null if no levels support the requested
+         *      feature 
+         */
+        public static CompatibilityLevel requiredFor(int languageFeatures) {
+            for (CompatibilityLevel level : CompatibilityLevel.values()) {
+                if (level.supports(languageFeatures)) {
+                    return level;
+                }
+            }
+            return null;
         }
 
         static String getSupportedVersions() {
@@ -1058,7 +1077,8 @@ public final class MixinEnvironment implements ITokenProvider {
             printer.kv("Internal Version", version);
             printer.kv("Java Versions Supported", CompatibilityLevel.getSupportedVersions());
             printer.kv("Current Compatibility Level", MixinEnvironment.getCompatibilityLevel());
-            printer.kv("Detected ASM API Version", ASM.getApiVersionString()).hr();
+            printer.kv("Detected ASM API Version", ASM.getApiVersionString());
+            printer.kv("Detected ASM Supports Java", ASM.getClassVersionString()).hr();
             printer.kv("Service Name", serviceName);
             printer.kv("Mixin Service Class", this.service.getClass().getName());
             printer.kv("Global Property Service Class", MixinService.getGlobalPropertyService().getClass().getName()).hr();
@@ -1147,7 +1167,7 @@ public final class MixinEnvironment implements ITokenProvider {
                 @SuppressWarnings("unchecked")
                 Class<? extends IEnvironmentTokenProvider> providerClass =
                         (Class<? extends IEnvironmentTokenProvider>)this.service.getClassProvider().findClass(providerName, true);
-                IEnvironmentTokenProvider provider = providerClass.newInstance();
+                IEnvironmentTokenProvider provider = providerClass.getDeclaredConstructor().newInstance();
                 this.registerTokenProvider(provider);
             } catch (Throwable th) {
                 MixinEnvironment.logger.error("Error instantiating " + providerName, th);
