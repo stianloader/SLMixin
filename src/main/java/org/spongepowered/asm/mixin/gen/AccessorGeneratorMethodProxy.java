@@ -74,7 +74,7 @@ public class AccessorGeneratorMethodProxy extends AccessorGenerator {
         if (!this.targetIsStatic) {
             method.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
         }
-        Bytecode.loadArgs(this.argTypes, method.instructions, this.targetIsStatic ? 0 : 1);
+        Bytecode.loadArgs(this.argTypes, method.instructions, this.info.isStatic ? 0 : 1);
         boolean isInterface = Bytecode.hasFlag(this.info.getClassNode(), Opcodes.ACC_INTERFACE);
         boolean isPrivate = Bytecode.hasFlag(this.targetMethod, Opcodes.ACC_PRIVATE);
         int opcode = this.targetIsStatic ? Opcodes.INVOKESTATIC : isInterface ? Opcodes.INVOKEINTERFACE : (isPrivate ? Opcodes.INVOKESPECIAL : Opcodes.INVOKEVIRTUAL);

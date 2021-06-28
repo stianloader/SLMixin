@@ -30,11 +30,11 @@ import java.util.Map.Entry;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
-import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel.LanguageFeature;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.throwables.InvalidInjectionException;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidInterfaceMixinException;
+import org.spongepowered.asm.util.LanguageFeatures;
 
 /**
  * Applicator for interface mixins, mainly just disables things which aren't
@@ -104,7 +104,7 @@ class MixinApplicatorInterface extends MixinApplicatorStandard {
                 InjectionInfo injectInfo = InjectionInfo.parse(mixin, method);
                 if (injectInfo != null) {
                     //Make sure we're running on a Java version which supports interfaces having method bodies
-                    if (!MixinEnvironment.getCompatibilityLevel().supports(LanguageFeature.METHODS_IN_INTERFACES)) {
+                    if (!MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.METHODS_IN_INTERFACES)) {
                         throw new InvalidInterfaceMixinException(mixin, injectInfo + " is not supported on interface mixin method " + method.name);
                     }
                 }
@@ -120,7 +120,7 @@ class MixinApplicatorInterface extends MixinApplicatorStandard {
     @Override
     protected void checkMethodVisibility(MixinTargetContext mixin, MethodNode mixinMethod) {
         //Allow injecting into static interface methods where it isn't possible to control the access of the injection method
-        if (Modifier.isStatic(mixinMethod.access) && !MixinEnvironment.getCompatibilityLevel().supports(LanguageFeature.PRIVATE_METHODS_IN_INTERFACES)) {
+        if (Modifier.isStatic(mixinMethod.access) && !MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES)) {
             InjectionInfo injectInfo = InjectionInfo.parse(mixin, mixinMethod);
             if (injectInfo != null) {
                 return;

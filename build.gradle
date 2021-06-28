@@ -4,19 +4,22 @@ buildscript {
         jcenter()
     }
     dependencies {
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
         classpath 'com.github.jengelman.gradle.plugins:shadow:6.1.0'
     }
 }
 
 // Apply plugin
 apply plugin: 'java'
+apply plugin: 'license'
+apply plugin: 'checkstyle'
 apply plugin: 'maven-publish'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 // Default tasks
-defaultTasks 'build'
+defaultTasks 'licenseFormat', 'check', 'build'
 
 // Basic project information
 group = 'net.fabricmc'
@@ -164,8 +167,24 @@ dependencies {
 }
 
 javadoc {
-    classpath += sourceSets.legacy.output // why?
+    exclude '**/throwables'
+    classpath += sourceSets.legacy.output
+    source sourceSets.ap.allJava
     options.encoding = 'UTF-8'
+    exclude {
+        it.relativePath.file && it.relativePath.pathString =~ 'tools' && !(it.name =~ /SuppressedBy|package-info/) }
+    options {
+        docTitle 'Welcome to the Mixin Javadoc'
+        overview 'docs/javadoc/overview.html'
+        stylesheetFile file('docs/javadoc/mixin.css')
+        addBooleanOption '-allow-script-in-comments', true
+    }
+    doLast {
+        copy {
+            from 'docs/javadoc/resources'
+            into outputDirectory
+        }
+    }
 }
 
 // Eclipse
@@ -188,6 +207,34 @@ idea.module.scopes.COMPILE.plus += [
 processResources {
     // Include in final JAR
    from 'LICENSE.txt'
+}
+
+// License header formatting
+license {
+    ext {
+        name = "Mixin"
+        organization = "SpongePowered"
+        url = "https://www.spongepowered.org"
+    }
+    include '**/*.java'
+    header file("HEADER.txt")
+    sourceSets = project.sourceSets
+    ignoreFailures false
+    strictCheck true
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
+}
+
+checkstyle {
+    configProperties = [
+        "name"        : project.name,
+        "organization": project.organization,
+        "url"         : project.url,
+        "year"        : project.inceptionYear
+    ]
+    configFile = file("checkstyle.xml")
+    toolVersion = '8.36.1'
 }
 
 // Source compiler configuration
