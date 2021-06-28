@@ -127,15 +127,15 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         }
 
         public AnnotationMirror getAtErrorElement(CompilerEnvironment compilerEnvironment) {
-            // JDT supports hanging the error on the @At annotation directly, doing this in javac doesn't work 
+            // JDT supports hanging the error on the @At annotation directly, doing this in javac doesn't work
             return (compilerEnvironment == CompilerEnvironment.JDT ? this.getAt() : this.getAnnotation()).asMirror();
         }
-        
+
         @Override
         public IAnnotationHandle getSelectorAnnotation() {
             return this.getAt();
         }
-        
+
         public String getAtArg(String key) {
             if (this.args == null) {
                 this.args = new HashMap<String, String>();
@@ -162,7 +162,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
     }
     
     static class AnnotatedElementSliceInjectionPoint extends AnnotatedElementInjectionPoint {
-        
+
         private final ISelectorContext parentContext;
 
         public AnnotatedElementSliceInjectionPoint(ExecutableElement element, AnnotationHandle inject, IMixinContext context,
@@ -177,26 +177,22 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         }
 
     }
-    
+
     AnnotatedMixinElementHandlerInjector(IMixinAnnotationProcessor ap, AnnotatedMixin mixin) {
         super(ap, mixin);
     }
 
     public void registerInjector(AnnotatedElementInjector elem) {
-        if (this.mixin.isInterface()) {
-            this.ap.printMessage(Kind.ERROR, "Injector in interface is unsupported", elem.getElement());
-        }
-        
         for (String reference : elem.getAnnotation().<String>getList("method")) {
             this.registerInjectorTarget(elem, reference, TargetSelector.parse(reference, elem), elem + ".method=\"" + reference + "\"");
         }
-        
+
         for (IAnnotationHandle desc : elem.getAnnotation().getAnnotationList("target")) {
             String subject = String.format("%s.target=@Desc(id = \"%s\")", elem, desc.<String>getValue("id", ""));
             this.registerInjectorTarget(elem, null, TargetSelector.parse(desc, elem), subject);
         }
     }
-    
+
     private void registerInjectorTarget(AnnotatedElementInjector elem, String reference, ITargetSelector targetSelector, String subject) {
         try {
             targetSelector.validate();
@@ -207,16 +203,16 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         if (!(targetSelector instanceof ITargetSelectorByName)) {
             return;
         }
-        
+
         ITargetSelectorByName targetMember = (ITargetSelectorByName)targetSelector;
         if (targetMember.getName() == null) {
             return;
         }
-        
+
         if (targetMember.getDesc() != null) {
             this.validateReferencedTarget(elem, reference, targetMember, subject);
         }
-        
+
         if (targetSelector instanceof ITargetSelectorRemappable && elem.shouldRemap()) {
             for (TypeHandle target : this.mixin.getTargets()) {
                 if (!this.registerInjector(elem, reference, (ITargetSelectorRemappable)targetMember, target)) {
@@ -296,10 +292,6 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
      * and process the references
      */
     public void registerInjectionPoint(AnnotatedElementInjectionPoint elem, String format) {
-        if (this.mixin.isInterface()) {
-            this.ap.printMessage(Kind.ERROR, "Injector in interface is unsupported", elem.getElement());
-        }
-        
         ITargetSelector targetSelector = null;
         String targetReference = elem.getAt().<String>getValue("target");
         if (targetReference != null) {
@@ -312,7 +304,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         }
         
         String type = InjectionPointData.parseType(elem.getAt().<String>getValue("value", ""));
-        
+
         ITargetSelector classSelector = null;
         String classReference = elem.getAtArg("class");
         if ("NEW".equals(type) && classReference != null) {
@@ -338,10 +330,10 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         if (!(selector instanceof ITargetSelectorConstructor)) {
             return;
         }
-        
+
         ITargetSelectorConstructor member = (ITargetSelectorConstructor)selector;
         String target = member.toCtorType();
-        
+
         if (target != null) {
             String desc = member.toCtorDesc();
             MappingMethod m = new MappingMethod(target, ".", desc != null ? desc : "()V");
@@ -361,10 +353,10 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
                     mappings.put(type, mapping.getDesc().replace(")V", ")L" + mapping.getOwner() + ";"));
                 }
             }
-            
+
             this.obf.getReferenceManager().addClassMapping(this.classRef, reference, mappings);
         }
-        
+
         elem.notifyRemapped();
     }
     
@@ -372,7 +364,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         if (!(selector instanceof ITargetSelectorRemappable)) {
             return;
         }
-        
+
         ITargetSelectorRemappable targetMember = (ITargetSelectorRemappable)selector;
         AnnotationMirror errorElement = elem.getAtErrorElement(this.ap.getCompilerEnvironment());
         
@@ -381,7 +373,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             this.ap.printMessage(Kind.ERROR, subject + " is not fully qualified, missing " + missing, elem.getElement(), errorElement);
             return;
         }
-        
+
         try {
             if (targetMember.isField()) {
                 ObfuscationData<MappingField> obfFieldData = this.obf.getDataProvider().getObfFieldRecursive(targetMember);

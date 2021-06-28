@@ -662,8 +662,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 12 and above
          */
-        JAVA_12(12, Opcodes.V12, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+        JAVA_12(12, Opcodes.V12, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -675,8 +675,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 13 and above
          */
-        JAVA_13(13, Opcodes.V13, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+        JAVA_13(13, Opcodes.V13, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -688,8 +688,8 @@ public final class MixinEnvironment implements ITokenProvider {
 	    /**
 	     * Java 14 and above
 	     */
-	    JAVA_14(14, Opcodes.V14, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-		    | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+	    JAVA_14(14, Opcodes.V14, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
 		    @Override
 		    boolean isSupported() {
@@ -701,8 +701,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 16 and above
          */
-        JAVA_15(15, Opcodes.V15, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+        JAVA_15(15, Opcodes.V15, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -714,8 +714,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 16 and above
          */
-        JAVA_16(16, Opcodes.V16, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+        JAVA_16(16, Opcodes.V16, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {
@@ -727,8 +727,8 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * Java 17 and above
          */
-        JAVA_17(17, Opcodes.V17, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES
-                | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+        JAVA_17(17, Opcodes.V17, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
 
             @Override
             boolean isSupported() {

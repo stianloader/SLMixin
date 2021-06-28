@@ -165,6 +165,12 @@ public class CallbackInjector extends Injector {
          */
         private boolean captureArgs = true;
 
+        /**
+         * Whether {@link #handler} uses the {@link CallbackInfo}/
+         * {@link CallbackInfoReturnable} it would normally be passed
+         */
+        final boolean usesCallbackInfo;
+
         Callback(MethodNode handler, Target target, final InjectionNode node, final LocalVariableNode[] locals, boolean captureLocals) {
             this.handler = handler;
             this.target = target;
@@ -208,6 +214,19 @@ public class CallbackInjector extends Injector {
             if (this.canCaptureLocals) {
                 this.invoke.add(this.localTypes.length - this.frameSize);
             }
+
+            //If the handler doesn't captureArgs, the CallbackInfo(Returnable) will be the first LVT slot, otherwise it will be at the target's frameSize
+            int callbackInfoSlot = handlerArgs.length == 1 ? Bytecode.isStatic(handler) ? 0 : 1 : frameSize;
+            boolean seenCallbackInfoUse = false;
+            for (AbstractInsnNode insn : handler.instructions) {
+                //Look for anywhere the CallbackInfo(Returnable) is loaded in the handler, it's unused if it is never loaded in
+                if (insn.getType() == AbstractInsnNode.VAR_INSN && insn.getOpcode() == Opcodes.ALOAD && ((VarInsnNode) insn).var == callbackInfoSlot) {
+                    seenCallbackInfoUse = true;
+                    break;
+                }
+            }
+            Injector.logger.debug("{} does{} use it's CallbackInfo{}", info, seenCallbackInfoUse ? "" : "n't", Type.VOID_TYPE == target.returnType ? "" : "Returnable");
+            usesCallbackInfo = seenCallbackInfoUse;
         }
 
         /**
@@ -530,12 +549,14 @@ public class CallbackInjector extends Injector {
             }
         }
         
-        this.dupReturnValue(callback);
-        if (this.cancellable || this.totalInjections > 1) {
-            this.createCallbackInfo(callback, true);
+        if (callback.usesCallbackInfo) {
+            this.dupReturnValue(callback);
+            if (this.cancellable || this.totalInjections > 1) {
+                this.createCallbackInfo(callback, true);
+            }
         }
         this.invokeCallback(callback, callbackMethod);
-        this.injectCancellationCode(callback);
+        if (callback.usesCallbackInfo) this.injectCancellationCode(callback);
         
         callback.inject();
         this.info.notifyInjected(callback.target);
@@ -647,7 +668,9 @@ public class CallbackInjector extends Injector {
      * @param callback callback handle
      */
     private void loadOrCreateCallbackInfo(final Callback callback) {
-        if (this.cancellable || this.totalInjections > 1) {
+        if (!callback.usesCallbackInfo) {
+            callback.add(new InsnNode(Opcodes.ACONST_NULL));
+        } else if (this.cancellable || this.totalInjections > 1) {
             callback.add(new VarInsnNode(Opcodes.ALOAD, this.callbackInfoVar), false, true);
         } else {
             this.createCallbackInfo(callback, false);

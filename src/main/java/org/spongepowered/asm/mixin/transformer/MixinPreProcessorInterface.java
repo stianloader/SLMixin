@@ -61,15 +61,19 @@ class MixinPreProcessorInterface extends MixinPreProcessorStandard {
     protected void prepareMethod(MixinMethodNode mixinMethod, Method method) {
         // Userland interfaces should not have non-public methods except for lambda bodies
         if (!Bytecode.hasFlag(mixinMethod, Opcodes.ACC_PUBLIC)) {
-            if (!Bytecode.hasFlag(mixinMethod, Opcodes.ACC_SYNTHETIC)) {
-                throw new InvalidInterfaceMixinException(this.mixin, String.format("Interface mixin contains a non-public method! Found %s in %s",
-                        method, this.mixin));
+            if (Bytecode.hasFlag(mixinMethod, Opcodes.ACC_SYNTHETIC)) {
+                CompatibilityLevel requiredLevel = CompatibilityLevel.requiredFor(LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES);
+                if (MixinEnvironment.getCompatibilityLevel().isLessThan(requiredLevel)) {
+                    throw new InvalidInterfaceMixinException(this.mixin, String.format(
+                            "Interface mixin contains a synthetic private method but compatibility level %s is required! Found %s in %s",
+                            requiredLevel, method, this.mixin));
+                }
             }
-            CompatibilityLevel requiredLevel = CompatibilityLevel.requiredFor(LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES);
-            if (MixinEnvironment.getCompatibilityLevel().isLessThan(requiredLevel)) {
-                throw new InvalidInterfaceMixinException(this.mixin, String.format(
-                        "Interface mixin contains a synthetic private method but compatibility level %s is required! Found %s in %s",
-                        requiredLevel, method, this.mixin));
+
+            //On versions that support it private methods are also allowed
+            if (!Bytecode.hasFlag(mixinMethod, Opcodes.ACC_PRIVATE) || !MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES)) {
+                throw new InvalidInterfaceMixinException(this.mixin, "Interface mixin contains a non-public method! Found " + method + " in "
+                        + this.mixin);
             }
         }
         
