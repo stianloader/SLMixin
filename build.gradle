@@ -69,9 +69,8 @@ repositories {
 }
 
 configurations {
-    thinJar
     stagingJar
-
+    
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
@@ -83,32 +82,26 @@ configurations {
 
 sourceSets {
     legacy {
-        ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
     main {
         compileClasspath += legacy.output
-        ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
     ap {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
     fernflower {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
     agent {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
     bridge {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     example {
@@ -117,25 +110,24 @@ sourceSets {
     }
     launchwrapper {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher {
         compileClasspath += main.output
-        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher4 {
         compileClasspath += main.output
         compileClasspath += modlauncher.output
-        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher9 {
+        ext.languageVersion = 16
         compileClasspath += main.output
         compileClasspath += modlauncher.output
     }
     modularity {
+        ext.languageVersion = 16
         java.srcDirs += [
             sourceSets.legacy.java.srcDirs,
             sourceSets.main.java.srcDirs,
@@ -162,13 +154,10 @@ dependencies {
     implementation "org.ow2.asm:asm-commons:$asmVersion"
     implementation "org.ow2.asm:asm-util:$asmVersion"
 
-    thinJar "org.ow2.asm:asm-tree:$asmVersion"
-    thinJar "org.ow2.asm:asm-util:$asmVersion"
-
     // Annotation Processor
     apImplementation "org.ow2.asm:asm-tree:$asmVersion"
     apImplementation guava
-
+    
     // Fernflower decompiler
     fernflowerImplementation 'org.jetbrains.java.decompiler:fernflower:sponge-SNAPSHOT'
 
@@ -189,7 +178,7 @@ dependencies {
         exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
-
+    
     modlauncher4Implementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
         exclude module: 'asm'
         exclude module: 'asm-analysis'
@@ -250,7 +239,7 @@ eclipse {
             // Can't include old modlauncher because it causes issues with modules
             entries.removeAll { it.kind == 'lib' && it.path =~ ~/modlauncher-$legacyModlauncherVersion/ }
             entries.removeAll { it.kind == 'src' && it.path =~ ~/modlauncher4/ }
-
+            
             // Mark everything else as a module
             entries.findAll { it.kind == "con" && it.path =~ /gradleclasspathcontainer$/ }.each {
                 it.entryAttributes['module'] = 'true'
@@ -306,7 +295,7 @@ project.sourceSets.each { set -> {
         project.tasks[set.compileJavaTaskName].javaCompiler = javaToolchains.compilerFor {
             languageVersion = JavaLanguageVersion.of(set.ext.languageVersion)
         }
-    }
+    } 
     if (set.ext.has("compatibility")) {
         project.tasks[set.compileJavaTaskName].sourceCompatibility = set.ext.compatibility
         project.tasks[set.compileJavaTaskName].targetCompatibility = set.ext.compatibility
@@ -321,10 +310,11 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 task stagingJar(type: ShadowJar) {
-    sourceSets.findAll { !(it.name =~ /example|modularity/) }.each {
+    sourceSets.findAll { !(it.name =~ /example|test/) }.each {
         from it.output
     }
-    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     configurations = [project.configurations.stagingJar]
     
     // JAR manifest configuration
@@ -350,28 +340,6 @@ task stagingJar(type: ShadowJar) {
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
-
-task thinJar(type: Jar) {
-    from sourceSets.main.output
-//    from { configurations.thinJar.collect { zipTree(it) }
-    baseName = 'sponge-mixin-runtime'
-    classifier = ''
-    
-    exclude 'org/spongepowered/asm/launch/**'
-    exclude 'org/spongepowered/asm/mixin/injection/invoke/**'
-    exclude 'org/spongepowered/asm/mixin/transformer/*.class'
-    exclude 'org/spongepowered/asm/mixin/transformer/debug/**'
-    exclude 'org/spongepowered/asm/mixin/transformer/verify/**'
-    
-    manifest.mainAttributes(
-        "Built-By": System.properties['user.name'],
-        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
-        "Implementation-Title": name,
-        "Implementation-Version": version,
-        "Implementation-Vendor": url,
-    )
-}
-build.dependsOn(thinJar)
 
 // generate shadow jar so we can use the AP standalone
 shadowJar  {
@@ -433,7 +401,6 @@ artifacts {
     } else {
         archives stagingJar
     }
-    archives thinJar
     archives sourceJar
     archives javadocJar
     archives shadowJar
@@ -459,6 +426,7 @@ publishing {
             artifact stagingJar
             artifact sourceJar
             artifact javadocJar
+            artifact shadowJar
 
             // https://issues.gradle.org/browse/GRADLE-2966
             pom.withXml {
