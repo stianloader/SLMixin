@@ -743,7 +743,7 @@ class MixinPreProcessorStandard {
     }
 
     protected void transformInvokeDynamic(InvokeDynamicInsnNode invokeDynamicNode) {
-        IActivity activity = this.activities.begin("%s::%s%s", invokeDynamicNode.owner, invokeDynamicNode.name, invokeDynamicNode.desc);
+        IActivity activity = this.activities.begin("%s%s", invokeDynamicNode.name, invokeDynamicNode.desc);
         Section metaTimer = this.profiler.begin("meta");
 
         MemberRef.Handle ref = new MemberRef.Handle(invokeDynamicNode.bsm);

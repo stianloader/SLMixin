@@ -658,104 +658,6 @@ public final class MixinEnvironment implements ITokenProvider {
             }
             
         },
-        
-        /**
-         * Java 12 or above is required
-         */
-        JAVA_12(12, Opcodes.V12, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_12 && ASM.isAtLeastVersion(7);
-            }
-            
-        },
-        
-        /**
-         * Java 13 or above is required
-         */
-        JAVA_13(13, Opcodes.V13, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_13 && ASM.isAtLeastVersion(7);
-            }
-            
-        },
-        
-        /**
-         * Java 14 or above is required. Records are a preview feature in this
-         * release.
-         */
-        JAVA_14(14, Opcodes.V14, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-                | LanguageFeatures.RECORDS) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_14 && ASM.isAtLeastVersion(8);
-            }
-            
-        },
-        
-        /**
-         * Java 15 or above is required. Records and sealed classes are preview
-         * features in this release.
-         */
-        JAVA_15(15, Opcodes.V15, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_15 && ASM.isAtLeastVersion(9);
-            }
-            
-        },
-        
-        /**
-         * Java 16 or above is required
-         */
-        JAVA_16(16, Opcodes.V16, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_16 && ASM.isAtLeastVersion(9);
-            }
-            
-        },
-        
-        /**
-         * Java 17 or above is required
-         */
-        JAVA_17(17, Opcodes.V17, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_17 && ASM.isAtLeastVersion(9, 1);
-            }
-            
-        },
-        
-        /**
-         * Java 18 or above is required
-         */
-        JAVA_18(18, Opcodes.V18, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
-            
-            @Override
-            boolean isSupported() {
-                return JavaVersion.current() >= JavaVersion.JAVA_18 && ASM.isAtLeastVersion(9, 2);
-            }
-            
-        },
 
         /**
          * Java 12 and above
@@ -831,6 +733,19 @@ public final class MixinEnvironment implements ITokenProvider {
             @Override
             boolean isSupported() {
                 return JavaVersion.current() >= 17.0;
+            }
+
+        },
+
+        /**
+         * Java 18 and above
+         */
+        JAVA_18(17, Opcodes.V18, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS) {
+
+            @Override
+            boolean isSupported() {
+                return JavaVersion.current() >= 18.0;
             }
 
         };
