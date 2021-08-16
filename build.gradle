@@ -2,10 +2,12 @@
 buildscript {
     repositories {
         gradlePluginPortal()
+        mavenCentral()
     }
     dependencies {
         classpath 'gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1'
         classpath 'gradle.plugin.com.github.jengelman.gradle.plugins:shadow:7.0.0'
+        classpath 'com.guardsquare:proguard-gradle:7.1.0'
     }
 }
 
@@ -43,9 +45,6 @@ ext.packaging = 'jar'
 ext.asmVersion = project.hasProperty("asmVersion") ? asmVersion : '9.0'
 ext.legacyForgeAsmVersion = project.hasProperty("legacyForgeAsmVersion") ? asmVersion : '5.0.3'
 
-// True to do jar signing task
-ext.doSignJar = project.hasProperty("keyStorePath")
-
 // Minimum version of Java required
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
@@ -70,7 +69,7 @@ repositories {
 
 configurations {
     stagingJar
-    
+
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
@@ -78,6 +77,14 @@ configurations {
     modlauncherImplementation   .extendsFrom implementation
     modlauncher9Implementation  .extendsFrom modlauncherImplementation
     modularityImplementation    .extendsFrom modlauncher9Implementation
+
+    proguard {
+        extendsFrom fernflowerImplementation
+        extendsFrom launchwrapperImplementation
+        extendsFrom modlauncherImplementation
+        extendsFrom compileClasspath
+    }
+    tinyRemapper
 }
 
 sourceSets {
@@ -142,10 +149,16 @@ sourceSets {
 // Project dependencies
 dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
-    def log4j2 = 'org.apache.logging.log4j:log4j-core:2.11.2'
-    
+    def log4j2 = 'org.apache.logging.log4j:log4j-core:2.0-beta9'
+    def log4j2Modular = 'org.apache.logging.log4j:log4j-core:2.11.2'
+    def gson = 'com.google.code.gson:gson:2.2.4'
+
+    stagingJar guava
+    stagingJar gson
+
     implementation guava
     implementation log4j2
+    modularityImplementation log4j2Modular
     implementation 'com.google.code.gson:gson:2.2.4'
     if (Float.parseFloat(asmVersion) < 6) {
         implementation "org.ow2.asm:asm-debug-all:$asmVersion"
@@ -157,7 +170,7 @@ dependencies {
     // Annotation Processor
     apImplementation "org.ow2.asm:asm-tree:$asmVersion"
     apImplementation guava
-    
+
     // Fernflower decompiler
     fernflowerImplementation 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
@@ -167,7 +180,7 @@ dependencies {
         exclude module: 'asm-debug-all'
         exclude module: 'jopt-simple'
     }
-    
+
     modlauncherImplementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
     modlauncherImplementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
         exclude module: 'asm'
@@ -178,7 +191,7 @@ dependencies {
         exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
-    
+
     modlauncher4Implementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
         exclude module: 'asm'
         exclude module: 'asm-analysis'
@@ -188,19 +201,21 @@ dependencies {
         exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
-    
+
     modlauncher9Implementation ("cpw.mods:modlauncher:$modlauncherVersion") {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
     modlauncher9Implementation 'cpw.mods:securejarhandler:0.9.+'
-    
+
     // asm bridge
     bridgeImplementation log4j2
     bridgeImplementation "org.ow2.asm:asm-commons:$legacyForgeAsmVersion"
     
     legacyImplementation "org.ow2.asm:asm-tree:$asmVersion"
+
+    tinyRemapper "net.fabricmc:tiny-remapper:0.4.2"
 }
 
 compileModularityJava {
@@ -239,7 +254,7 @@ eclipse {
             // Can't include old modlauncher because it causes issues with modules
             entries.removeAll { it.kind == 'lib' && it.path =~ ~/modlauncher-$legacyModlauncherVersion/ }
             entries.removeAll { it.kind == 'src' && it.path =~ ~/modlauncher4/ }
-            
+
             // Mark everything else as a module
             entries.findAll { it.kind == "con" && it.path =~ /gradleclasspathcontainer$/ }.each {
                 it.entryAttributes['module'] = 'true'
@@ -295,7 +310,7 @@ project.sourceSets.each { set -> {
         project.tasks[set.compileJavaTaskName].javaCompiler = javaToolchains.compilerFor {
             languageVersion = JavaLanguageVersion.of(set.ext.languageVersion)
         }
-    } 
+    }
     if (set.ext.has("compatibility")) {
         project.tasks[set.compileJavaTaskName].sourceCompatibility = set.ext.compatibility
         project.tasks[set.compileJavaTaskName].targetCompatibility = set.ext.compatibility
@@ -322,7 +337,7 @@ task stagingJar(type: ShadowJar) {
         "Built-By": System.properties['user.name'],
         "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
         "Implementation-Title": name,
-        "Implementation-Version": version,
+        "Implementation-Version": archiveVersion,
         "Implementation-Vendor": url,
         // for hotswap agent
         "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
@@ -330,13 +345,47 @@ task stagingJar(type: ShadowJar) {
         "Can-Redefine-Classes": true,
         "Can-Retransform-Classes": true
     )
-
-    if (project.doSignJar) {
-        classifier = 'unsigned'
-    }
     
     mergeServiceFiles()
+    relocate 'com.google', 'org.spongepowered.include.com.google'
+    archiveClassifier = "staging"
 }
+
+File proguardFile = file("build/libs/sponge-mixin-${version}-universal.jar")
+File remappedFile = file("build/libs/sponge-mixin-${version}.jar")
+
+task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJar) {
+    doFirst {
+        configurations.proguard.resolve().forEach {
+            libraryjars it
+        }
+    }
+
+    outputs.upToDateWhen { false }
+
+    libraryjars JavaVersion.current().java9Compatible ? "${System.getProperty('java.home')}/jmods" : "${System.getProperty('java.home')}/lib/rt.jar"
+
+    injars stagingJar.archiveFile
+    outjars proguardFile
+    configuration file("proguard.conf")
+}
+
+// Remap log4j usage to use fabric-loaders bridge
+task remapLog4jUsage(type: JavaExec, dependsOn: stagingProguardJar) {
+    classpath = configurations.tinyRemapper
+    mainClass = "net.fabricmc.tinyremapper.Main"
+    outputs.upToDateWhen { false }
+
+    args = [
+        proguardFile.absolutePath,
+        remappedFile.absolutePath,
+        file("log4j.mappings").absolutePath,
+        "log4j",
+        "loader"
+    ]
+}
+
+build.dependsOn remapLog4jUsage
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
@@ -344,40 +393,14 @@ configurations.archives.artifacts.clear()
 // generate shadow jar so we can use the AP standalone
 shadowJar  {
     from sourceSets.ap.output
-    classifier = 'processor'
+    archiveClassifier = 'processor'
 }
 build.dependsOn(shadowJar)
-
-if (project.doSignJar) {
-    // Define signjar task    
-    task signJar() {
-        inputs.files(stagingJar.outputs)
-        outputs.files stagingJar.outputs.files.collect {
-            new File(it.parent, it.name.replace('-unsigned', ''))
-        }
-        doLast {
-            stagingJar.outputs.files.each {
-                ant.signjar(
-                    alias: project.keyStoreCert,
-                    jar: it,
-                    signedJar: new File(it.parent, it.name.replace('-unsigned', '')),
-                    keystore: project.keyStorePath,
-                    storepass: project.keyStoreSecret,
-                    keypass: project.keyStoreSecret,
-                    tsaurl: project.timestampAuthority,
-                    preservelastmodified: 'true',
-                    verbose: true
-                )
-            }
-        }
-    }
-    build.dependsOn(signJar)
-}
 
 // Run this task instead of build to generate a timestamped shadow jar (for dev)
 task timestamp(type: Jar, dependsOn: build) {
     if (gradle.startParameter.taskNames.contains(name)) {
-        shadowJar.classifier = new Date().format('yyyyMMddHHmmss')
+        shadowJar.archiveClassifier = new Date().format('yyyyMMddHHmmss')
     }
 }
 
@@ -386,21 +409,17 @@ task sourceJar(type: Jar) {
         from it.java
         from it.resources
     }
-	classifier = "sources"
+    archiveClassifier = "sources"
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
 	from javadoc.destinationDir
-	classifier = "javadoc"
+    archiveClassifier = "javadoc"
 }
 
 artifacts {
-    if (project.doSignJar) {
-        archives signJar.outputs.files[0]
-    } else {
-        archives stagingJar
-    }
+    archives stagingJar
     archives sourceJar
     archives javadocJar
     archives shadowJar
@@ -423,16 +442,23 @@ publishing {
             artifactId project.archivesBaseName
             version project.version
 
-            artifact stagingJar
             artifact sourceJar
             artifact javadocJar
-            artifact shadowJar
+            artifact(proguardFile) {
+                builtBy stagingProguardJar
+                classifier = "universal"
+            }
+
+            artifact(remappedFile) {
+                builtBy remapLog4jUsage
+                classifier = null
+            }
 
             // https://issues.gradle.org/browse/GRADLE-2966
             pom.withXml {
                 def dependenciesNode = asNode().appendNode('dependencies')
 
-                configurations.runtime.allDependencies.each {
+                configurations.runtimeClasspath.allDependencies.each {
                     if (it.group != null && it.name != null && !excludePomDeps.contains(it.name)) {
                         def dependencyNode = dependenciesNode.appendNode('dependency')
                         dependencyNode.appendNode('groupId', it.group)
