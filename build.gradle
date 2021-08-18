@@ -368,6 +368,7 @@ task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJa
     outjars proguardFile
     configuration file("proguard.conf")
 }
+build.dependsOn stagingProguardJar
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
