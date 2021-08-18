@@ -69,7 +69,7 @@ repositories {
 
 configurations {
     stagingJar
-
+    
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
@@ -84,31 +84,36 @@ configurations {
         extendsFrom modlauncherImplementation
         extendsFrom compileClasspath
     }
-    tinyRemapper
 }
 
 sourceSets {
     legacy {
-        ext.compatibility = '1.8'
+        ext.languageVersion = 8
+        ext.compatibility = '1.6'
     }
     main {
         compileClasspath += legacy.output
-        ext.compatibility = '1.8'
+        ext.languageVersion = 8
+        ext.compatibility = '1.6'
     }
     ap {
         compileClasspath += main.output
-        ext.compatibility = '1.8'
+        ext.languageVersion = 8
+        ext.compatibility = '1.6'
     }
     fernflower {
         compileClasspath += main.output
-        ext.compatibility = '1.8'
+        ext.languageVersion = 8
+        ext.compatibility = '1.6'
     }
     agent {
         compileClasspath += main.output
-        ext.compatibility = '1.8'
+        ext.languageVersion = 8
+        ext.compatibility = '1.6'
     }
     bridge {
         compileClasspath += main.output
+        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     example {
@@ -117,15 +122,18 @@ sourceSets {
     }
     launchwrapper {
         compileClasspath += main.output
+        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher {
         compileClasspath += main.output
+        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher4 {
         compileClasspath += main.output
         compileClasspath += modlauncher.output
+        ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
     modlauncher9 {
@@ -149,16 +157,12 @@ sourceSets {
 // Project dependencies
 dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
-    def log4j2 = 'org.apache.logging.log4j:log4j-core:2.0-beta9'
-    def log4j2Modular = 'org.apache.logging.log4j:log4j-core:2.11.2'
     def gson = 'com.google.code.gson:gson:2.2.4'
 
     stagingJar guava
     stagingJar gson
 
     implementation guava
-    implementation log4j2
-    modularityImplementation log4j2Modular
     implementation 'com.google.code.gson:gson:2.2.4'
     if (Float.parseFloat(asmVersion) < 6) {
         implementation "org.ow2.asm:asm-debug-all:$asmVersion"
@@ -170,7 +174,7 @@ dependencies {
     // Annotation Processor
     apImplementation "org.ow2.asm:asm-tree:$asmVersion"
     apImplementation guava
-
+    
     // Fernflower decompiler
     fernflowerImplementation 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
@@ -180,42 +184,37 @@ dependencies {
         exclude module: 'asm-debug-all'
         exclude module: 'jopt-simple'
     }
-
+    
     modlauncherImplementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
+    modlauncherCompileOnly 'org.apache.logging.log4j:log4j-core:2.0-beta9'
     modlauncherImplementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
         exclude module: 'asm'
         exclude module: 'asm-analysis'
         exclude module: 'asm-commons'
         exclude module: 'asm-tree'
-        exclude module: 'log4j-api'
-        exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
-
+    
     modlauncher4Implementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
         exclude module: 'asm'
         exclude module: 'asm-analysis'
         exclude module: 'asm-commons'
         exclude module: 'asm-tree'
-        exclude module: 'log4j-api'
-        exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
-
+    
     modlauncher9Implementation ("cpw.mods:modlauncher:$modlauncherVersion") {
-        exclude module: 'log4j-api'
-        exclude module: 'log4j-core'
         exclude module: 'jopt-simple'
     }
     modlauncher9Implementation 'cpw.mods:securejarhandler:0.9.+'
-
+    
     // asm bridge
-    bridgeImplementation log4j2
+    bridgeImplementation 'org.apache.logging.log4j:log4j-core:2.0-beta9'
     bridgeImplementation "org.ow2.asm:asm-commons:$legacyForgeAsmVersion"
     
     legacyImplementation "org.ow2.asm:asm-tree:$asmVersion"
 
-    tinyRemapper "net.fabricmc:tiny-remapper:0.4.2"
+    modularityCompileOnly 'org.apache.logging.log4j:log4j-core:2.11.2'
 }
 
 compileModularityJava {
@@ -254,6 +253,7 @@ eclipse {
             // Can't include old modlauncher because it causes issues with modules
             entries.removeAll { it.kind == 'lib' && it.path =~ ~/modlauncher-$legacyModlauncherVersion/ }
             entries.removeAll { it.kind == 'src' && it.path =~ ~/modlauncher4/ }
+            entries.removeAll { it.kind == 'lib' && it.path =~ ~/log4j.*beta9/ }
 
             // Mark everything else as a module
             entries.findAll { it.kind == "con" && it.path =~ /gradleclasspathcontainer$/ }.each {
@@ -310,7 +310,7 @@ project.sourceSets.each { set -> {
         project.tasks[set.compileJavaTaskName].javaCompiler = javaToolchains.compilerFor {
             languageVersion = JavaLanguageVersion.of(set.ext.languageVersion)
         }
-    }
+    } 
     if (set.ext.has("compatibility")) {
         project.tasks[set.compileJavaTaskName].sourceCompatibility = set.ext.compatibility
         project.tasks[set.compileJavaTaskName].targetCompatibility = set.ext.compatibility
@@ -329,7 +329,7 @@ task stagingJar(type: ShadowJar) {
         from it.output
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
+    
     configurations = [project.configurations.stagingJar]
     
     // JAR manifest configuration
@@ -351,8 +351,7 @@ task stagingJar(type: ShadowJar) {
     archiveClassifier = "staging"
 }
 
-File proguardFile = file("build/libs/sponge-mixin-${version}-universal.jar")
-File remappedFile = file("build/libs/sponge-mixin-${version}.jar")
+File proguardFile = file("build/libs/sponge-mixin-${version}.jar")
 
 task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJar) {
     doFirst {
@@ -369,23 +368,6 @@ task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJa
     outjars proguardFile
     configuration file("proguard.conf")
 }
-
-// Remap log4j usage to use fabric-loaders bridge
-task remapLog4jUsage(type: JavaExec, dependsOn: stagingProguardJar) {
-    classpath = configurations.tinyRemapper
-    mainClass = "net.fabricmc.tinyremapper.Main"
-    outputs.upToDateWhen { false }
-
-    args = [
-        proguardFile.absolutePath,
-        remappedFile.absolutePath,
-        file("log4j.mappings").absolutePath,
-        "log4j",
-        "loader"
-    ]
-}
-
-build.dependsOn remapLog4jUsage
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
@@ -446,11 +428,6 @@ publishing {
             artifact javadocJar
             artifact(proguardFile) {
                 builtBy stagingProguardJar
-                classifier = "universal"
-            }
-
-            artifact(remappedFile) {
-                builtBy remapLog4jUsage
                 classifier = null
             }
 

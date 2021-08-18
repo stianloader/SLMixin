@@ -26,11 +26,11 @@ package org.spongepowered.asm.mixin.gen;
 
 import java.util.ArrayList;
 
-import org.apache.logging.log4j.LogManager;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
+import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.asm.ASM;
 
 /**
@@ -58,7 +58,7 @@ public abstract class AccessorGenerator {
             if (!this.targetIsStatic) {
                 throw new InvalidAccessorException(this.info, String.format("%s is invalid. Accessor method is static but the target is not.", this.info));
             } else {
-                LogManager.getLogger("mixin").info("{} should be static as its target is", this.info);
+                MixinService.getService().getLogger("mixin").info("{} should be static as its target is", this.info);
             }
         }
     }

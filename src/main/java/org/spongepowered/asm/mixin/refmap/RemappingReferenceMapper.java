@@ -24,14 +24,15 @@
  */
 package org.spongepowered.asm.mixin.refmap;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Type;
+
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 
 import org.spongepowered.asm.mixin.extensibility.IRemapper;
 import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
+import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.ObfuscationUtil;
 import org.spongepowered.asm.util.Quantifier;
 
@@ -47,7 +48,7 @@ public final class RemappingReferenceMapper implements IClassReferenceMapper, IR
     /**
      * Logger
      */
-    private static final Logger logger = LogManager.getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("mixin");
     
     /**
      * The "inner" refmap, this is the original refmap specified in the config
