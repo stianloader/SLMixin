@@ -143,7 +143,7 @@ class MixinPreProcessorStandard {
     
     protected final MixinEnvironment env;
     
-    protected final Profiler profiler = MixinEnvironment.getProfiler();
+    protected final Profiler profiler = Profiler.getProfiler("mixin");
     
     protected final ActivityStack activities = new ActivityStack();
 
