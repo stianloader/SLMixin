@@ -225,7 +225,7 @@ public final class TargetMap extends HashMap<TypeReference, Set<TypeReference>> 
             sessionFile.deleteOnExit();
         }
 
-        try (FileOutputStream outputStream = new FileOutputStream(sessionFile, true)) {
+        try (FileOutputStream outputStream = new FileOutputStream(sessionFile)) {
             outputStream.write(json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception ex) {
             ex.printStackTrace();
