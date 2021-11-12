@@ -99,7 +99,7 @@ public final class MainAttributes {
         }
         
         if ("file".equals(codeSource.getScheme())) {
-            File file = new File(codeSource);
+            File file = Paths.get(codeSource).toFile();
             
             if (file.isFile()) {
                 Attributes attributes = MainAttributes.getJarAttributes(file);
