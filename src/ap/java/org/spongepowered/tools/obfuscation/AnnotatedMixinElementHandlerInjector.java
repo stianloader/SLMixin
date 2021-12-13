@@ -31,8 +31,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
 
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
@@ -49,6 +47,7 @@ import org.spongepowered.asm.obfuscation.mapping.common.MappingMethod;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
 import org.spongepowered.tools.obfuscation.ReferenceManager.ReferenceConflictException;
 import org.spongepowered.tools.obfuscation.ext.SpecialPackages;
+import org.spongepowered.tools.obfuscation.interfaces.IMessagerEx.MessageType;
 import org.spongepowered.tools.obfuscation.interfaces.IMixinAnnotationProcessor;
 import org.spongepowered.tools.obfuscation.interfaces.IMixinAnnotationProcessor.CompilerEnvironment;
 import org.spongepowered.tools.obfuscation.interfaces.IReferenceManager;
@@ -89,8 +88,8 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             return false;
         }
         
-        public void addMessage(Diagnostic.Kind kind, CharSequence msg, Element element, AnnotationHandle annotation) {
-            this.state.addMessage(kind, msg, element, annotation);
+        public void addMessage(MessageType type, CharSequence msg, Element element, AnnotationHandle annotation) {
+            this.state.addMessage(type, msg, element, annotation);
         }
         
         @Override
@@ -127,15 +126,15 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         }
 
         public AnnotationMirror getAtErrorElement(CompilerEnvironment compilerEnvironment) {
-            // JDT supports hanging the error on the @At annotation directly, doing this in javac doesn't work
-            return (compilerEnvironment == CompilerEnvironment.JDT ? this.getAt() : this.getAnnotation()).asMirror();
+            // JDT and IDEA support hanging the error on the @At annotation directly, doing this in javac doesn't work
+            return (compilerEnvironment.isDevelopmentEnvironment() ? this.getAt() : this.getAnnotation()).asMirror();
         }
-
+        
         @Override
         public IAnnotationHandle getSelectorAnnotation() {
             return this.getAt();
         }
-
+        
         public String getAtArg(String key) {
             if (this.args == null) {
                 this.args = new HashMap<String, String>();
@@ -162,7 +161,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
     }
     
     static class AnnotatedElementSliceInjectionPoint extends AnnotatedElementInjectionPoint {
-
+        
         private final ISelectorContext parentContext;
 
         public AnnotatedElementSliceInjectionPoint(ExecutableElement element, AnnotationHandle inject, IMixinContext context,
@@ -177,7 +176,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         }
 
     }
-
+    
     AnnotatedMixinElementHandlerInjector(IMixinAnnotationProcessor ap, AnnotatedMixin mixin) {
         super(ap, mixin);
     }
@@ -186,33 +185,33 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         for (String reference : elem.getAnnotation().<String>getList("method")) {
             this.registerInjectorTarget(elem, reference, TargetSelector.parse(reference, elem), elem + ".method=\"" + reference + "\"");
         }
-
+        
         for (IAnnotationHandle desc : elem.getAnnotation().getAnnotationList("target")) {
             String subject = String.format("%s.target=@Desc(id = \"%s\")", elem, desc.<String>getValue("id", ""));
             this.registerInjectorTarget(elem, null, TargetSelector.parse(desc, elem), subject);
         }
     }
-
+    
     private void registerInjectorTarget(AnnotatedElementInjector elem, String reference, ITargetSelector targetSelector, String subject) {
         try {
             targetSelector.validate();
         } catch (InvalidSelectorException ex) {
-            elem.printMessage(this.ap, Kind.ERROR, ex.getMessage());
+            elem.printMessage(this.ap, MessageType.TARGET_SELECTOR_VALIDATION, ex.getMessage());
         }
 
         if (!(targetSelector instanceof ITargetSelectorByName)) {
             return;
         }
-
+        
         ITargetSelectorByName targetMember = (ITargetSelectorByName)targetSelector;
         if (targetMember.getName() == null) {
             return;
         }
-
+        
         if (targetMember.getDesc() != null) {
             this.validateReferencedTarget(elem, reference, targetMember, subject);
         }
-
+        
         if (targetSelector instanceof ITargetSelectorRemappable && elem.shouldRemap()) {
             for (TypeHandle target : this.mixin.getTargets()) {
                 if (!this.registerInjector(elem, reference, (ITargetSelectorRemappable)targetMember, target)) {
@@ -225,14 +224,16 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
     private boolean registerInjector(AnnotatedElementInjector elem, String reference, ITargetSelectorRemappable targetMember, TypeHandle target) {
         String desc = target.findDescriptor(targetMember);
         if (desc == null) {
-            Kind error = this.mixin.isMultiTarget() ? Kind.ERROR : Kind.WARNING;
+            MessageType messageType = this.mixin.isMultiTarget() ? MessageType.MISSING_INJECTOR_DESC_MULTITARGET
+                    : MessageType.MISSING_INJECTOR_DESC_SINGLETARGET;
             if (target.isSimulated()) {
-                elem.printMessage(this.ap, Kind.OTHER, elem + " target '" + reference + "' in @Pseudo mixin will not be obfuscated");
+                elem.printMessage(this.ap, MessageType.MISSING_INJECTOR_DESC_SIMULATED, elem + " target '" + reference
+                        + "' in @Pseudo mixin will not be obfuscated");
             } else if (target.isImaginary()) {
-                elem.printMessage(this.ap, error, elem + " target requires method signature because enclosing type information for " 
+                elem.printMessage(this.ap, messageType, elem + " target requires method signature because enclosing type information for "
                         + target + " is unavailable");
             } else if (!targetMember.isInitialiser()) {
-                elem.printMessage(this.ap, error, "Unable to determine signature for " + elem + " target method");
+                elem.printMessage(this.ap, messageType, "Unable to determine descriptor for " + elem + " target method");
             }
             return true;
         }
@@ -246,8 +247,8 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             } else if (targetMember.isClassInitialiser()) {
                 return true;
             } else {
-                Kind error = targetMember.isConstructor() ? Kind.WARNING : Kind.ERROR;
-                elem.addMessage(error, "No obfuscation mapping for " + targetName, elem.getElement(), elem.getAnnotation());
+                elem.addMessage(targetMember.isConstructor() ? MessageType.NO_OBFDATA_FOR_CTOR : MessageType.NO_OBFDATA_FOR_TARGET,
+                        "Unable to locate obfuscation mapping for " + targetName, elem.getElement(), elem.getAnnotation());
                 return false;
             }
         }
@@ -274,14 +275,14 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
                     refMap.setAllowConflicts(false);
 
                     // This is bad because in notch mappings, using the bare target name might cause everything to explode
-                    elem.printMessage(this.ap, Kind.WARNING, "Coerced " + conflictType + " reference has conflicting descriptors for " + targetName
-                            + ": Storing bare references " + obfData.values() + " in refMap");
+                    elem.printMessage(this.ap, MessageType.BARE_REFERENCE, "Coerced " + conflictType + " reference has conflicting descriptors for "
+                            + targetName + ": Storing bare references " + obfData.values() + " in refMap");
                     return true;
                 }
             }
             
-            elem.printMessage(this.ap, Kind.ERROR, conflictType + " reference conflict for " + targetName + ": " + reference + " -> "
-                    + ex.getNew() + " previously defined as " + ex.getOld());
+            elem.printMessage(this.ap, MessageType.INJECTOR_MAPPING_CONFLICT, conflictType + " reference conflict for " + targetName + ": "
+                    + reference + " -> " + ex.getNew() + " previously defined as " + ex.getOld());
         }
         
         return true;
@@ -299,12 +300,13 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             try {
                 targetSelector.validate();
             } catch (InvalidSelectorException ex) {
-                this.ap.printMessage(Kind.ERROR, ex.getMessage(), elem.getElement(), elem.getAtErrorElement(this.ap.getCompilerEnvironment()));
+                this.ap.printMessage(MessageType.TARGET_SELECTOR_VALIDATION, ex.getMessage(), elem.getElement(),
+                        elem.getAtErrorElement(this.ap.getCompilerEnvironment()));
             }
         }
         
         String type = InjectionPointData.parseType(elem.getAt().<String>getValue("value", ""));
-
+        
         ITargetSelector classSelector = null;
         String classReference = elem.getAtArg("class");
         if ("NEW".equals(type) && classReference != null) {
@@ -312,7 +314,8 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             try {
                 classSelector.validate();
             } catch (InvalidSelectorException ex) {
-                this.ap.printMessage(Kind.ERROR, ex.getMessage(), elem.getElement(), elem.getAtErrorElement(this.ap.getCompilerEnvironment()));
+                this.ap.printMessage(MessageType.TARGET_SELECTOR_VALIDATION, ex.getMessage(), elem.getElement(),
+                        elem.getAtErrorElement(this.ap.getCompilerEnvironment()));
             }
         }
         
@@ -330,17 +333,17 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         if (!(selector instanceof ITargetSelectorConstructor)) {
             return;
         }
-
+        
         ITargetSelectorConstructor member = (ITargetSelectorConstructor)selector;
         String target = member.toCtorType();
-
+        
         if (target != null) {
             String desc = member.toCtorDesc();
             MappingMethod m = new MappingMethod(target, ".", desc != null ? desc : "()V");
             ObfuscationData<MappingMethod> remapped = this.obf.getDataProvider().getRemappedMethod(m);
             if (remapped.isEmpty() && !SpecialPackages.isExcludedPackage(member.toCtorType())) {
-                this.ap.printMessage(Kind.WARNING, "Cannot find class mapping for " + subject + " '" + target + "'", elem.getElement(),
-                        elem.getAnnotation().asMirror(), SuppressedBy.MAPPING);
+                this.ap.printMessage(MessageType.NO_OBFDATA_FOR_CLASS, "Unable to locate class mapping for " + subject + " '" + target + "'",
+                        elem.getElement(), elem.getAnnotation().asMirror(), SuppressedBy.MAPPING);
                 return;
             }
 
@@ -353,10 +356,10 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
                     mappings.put(type, mapping.getDesc().replace(")V", ")L" + mapping.getOwner() + ";"));
                 }
             }
-
+            
             this.obf.getReferenceManager().addClassMapping(this.classRef, reference, mappings);
         }
-
+        
         elem.notifyRemapped();
     }
     
@@ -364,23 +367,24 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         if (!(selector instanceof ITargetSelectorRemappable)) {
             return;
         }
-
+        
         ITargetSelectorRemappable targetMember = (ITargetSelectorRemappable)selector;
         AnnotationMirror errorElement = elem.getAtErrorElement(this.ap.getCompilerEnvironment());
         
         if (!targetMember.isFullyQualified()) {
-            String missing = targetMember.getOwner() == null ? (targetMember.getDesc() == null ? "owner and signature" : "owner") : "signature";
-            this.ap.printMessage(Kind.ERROR, subject + " is not fully qualified, missing " + missing, elem.getElement(), errorElement);
+            String missing = targetMember.getOwner() == null ? (targetMember.getDesc() == null ? "owner and descriptor" : "owner") : "descriptor";
+            this.ap.printMessage(MessageType.INJECTOR_TARGET_NOT_FULLY_QUALIFIED, subject + " is not fully qualified, missing " + missing,
+                    elem.getElement(), errorElement);
             return;
         }
-
+        
         try {
             if (targetMember.isField()) {
                 ObfuscationData<MappingField> obfFieldData = this.obf.getDataProvider().getObfFieldRecursive(targetMember);
                 if (obfFieldData.isEmpty()) {
                     if (targetMember.getOwner() == null || !SpecialPackages.isExcludedPackage(targetMember.getOwner())) {
-                        this.ap.printMessage(Kind.WARNING, "Cannot find field mapping for " + subject + " '" + reference + "'", elem.getElement(),
-                                errorElement, SuppressedBy.MAPPING);
+                        this.ap.printMessage(MessageType.NO_OBFDATA_FOR_FIELD, "Unable to locate field mapping for " + subject + " '" + reference
+                                + "'", elem.getElement(), errorElement, SuppressedBy.MAPPING);
                     }
                     return;
                 }
@@ -389,8 +393,8 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
                 ObfuscationData<MappingMethod> obfMethodData = this.obf.getDataProvider().getObfMethodRecursive(targetMember);
                 if (obfMethodData.isEmpty()) {
                     if (targetMember.getOwner() == null || !SpecialPackages.isExcludedPackage(targetMember.getOwner())) {
-                        this.ap.printMessage(Kind.WARNING, "Cannot find method mapping for " + subject + " '" + reference + "'", elem.getElement(),
-                                errorElement, SuppressedBy.MAPPING);
+                        this.ap.printMessage(MessageType.NO_OBFDATA_FOR_METHOD, "Unable to locate method mapping for " + subject + " '" + reference
+                                + "'", elem.getElement(), errorElement, SuppressedBy.MAPPING);
                     }
                     return;
                 }
@@ -399,7 +403,7 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
         } catch (ReferenceConflictException ex) {
             // Since references are fully-qualified, it shouldn't be possible for there to be multiple mappings, however
             // we catch and log the error in case something weird happens in the mapping provider
-            this.ap.printMessage(Kind.ERROR, "Unexpected reference conflict for " + subject + ": " + reference + " -> "
+            this.ap.printMessage(MessageType.INJECTOR_MAPPING_CONFLICT, "Unexpected reference conflict for " + subject + ": " + reference + " -> "
                     + ex.getNew() + " previously defined as " + ex.getOld(), elem.getElement(), errorElement);
             return;
         }

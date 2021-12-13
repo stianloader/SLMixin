@@ -21,6 +21,7 @@ apply plugin: 'maven-publish'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'potemkin-modules'
 
 // Default tasks
 defaultTasks 'licenseFormat', 'check', 'build'
@@ -81,6 +82,7 @@ configurations {
     modlauncherImplementation   .extendsFrom implementation
     modlauncher9Implementation  .extendsFrom modlauncherImplementation
     modularityImplementation    .extendsFrom modlauncher9Implementation
+    modularityCompileOnly       .extendsFrom compileOnly
 
     proguard {
         extendsFrom fernflowerImplementation
@@ -157,6 +159,15 @@ sourceSets {
     }
 }
 
+// Because Mixin aims to support a variety of environments, we have to be able to run with older versions of GSON and Guava that lack official module
+// names. This means the same library may appear with multiple module names. We want to be able to link our module with either of these two at
+// runtime, without having to have two versions of the library on our compile-time module path. To do this, we generate empty "potemkin" jars with
+// *only* a module descriptor for the module we want to be able to compile against.
+potemkinModules {
+    module 'com.google.gson'
+    module 'com.google.common'
+}
+
 // Project dependencies
 dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
@@ -178,7 +189,7 @@ dependencies {
     apImplementation "org.ow2.asm:asm-tree:$asmVersion"
     apImplementation guava
     apImplementation gson
-    
+
     // Fernflower decompiler
     fernflowerImplementation 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
@@ -217,7 +228,7 @@ dependencies {
     bridgeImplementation "org.ow2.asm:asm-commons:$legacyForgeAsmVersion"
     
     legacyImplementation "org.ow2.asm:asm-tree:$asmVersion"
-
+    
     modularityCompileOnly 'org.apache.logging.log4j:log4j-core:2.11.2'
 }
 
@@ -250,7 +261,7 @@ eclipse {
             entries.removeAll { it.kind == 'lib' && it.path =~ ~/modlauncher-$legacyModlauncherVersion/ }
             entries.removeAll { it.kind == 'src' && it.path =~ ~/modlauncher4/ }
             entries.removeAll { it.kind == 'lib' && it.path =~ ~/log4j.*beta9/ }
-
+            
             // Mark everything else as a module
             entries.findAll { it.kind == "con" && it.path =~ /gradleclasspathcontainer$/ }.each {
                 it.entryAttributes['module'] = 'true'
@@ -258,6 +269,17 @@ eclipse {
         }
     }
     
+    project {
+        resourceFilter {
+            appliesTo = 'FOLDERS'
+            type = 'EXCLUDE_ALL'
+            matcher {
+                id = 'org.eclipse.ui.ide.multiFilter'
+                arguments = '1.0-name-matches-false-false-buildSrc'
+            }
+        }
+    }
+
     // Build service task outputs for test projects
     autoBuildTasks compileModlauncher4Java, compileModlauncher9Java, compileLaunchwrapperJava
 }
@@ -293,7 +315,7 @@ checkstyle {
         "year"        : project.inceptionYear
     ]
     configFile = file("checkstyle.xml")
-    toolVersion = '8.43'
+    toolVersion = '8.44'
 }
 
 // Source compiler configuration
