@@ -498,7 +498,7 @@ publishing {
             }
 
 			pom {
-                name = "Fabric Mixin"
+				name = "Fabric Mixin"
 				description = 'Fabric Mixin is a trait/mixin and bytecode weaving framework for Java using ASM.'
 				url = 'https://github.com/FabricMC/Mixin'
 
