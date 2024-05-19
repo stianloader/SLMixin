@@ -97,10 +97,12 @@ public class Initialiser {
      * receiving constructor. 
      */
     protected static final int[] OPCODE_BLACKLIST = {
-        Opcodes.RETURN, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD, Opcodes.IALOAD, Opcodes.LALOAD, Opcodes.FALOAD, Opcodes.DALOAD,
-        Opcodes.AALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD, Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.FSTORE, Opcodes.DSTORE,
-        Opcodes.ASTORE, Opcodes.IASTORE, Opcodes.LASTORE, Opcodes.FASTORE, Opcodes.DASTORE, Opcodes.AASTORE, Opcodes.BASTORE, Opcodes.CASTORE,
-        Opcodes.SASTORE
+            Opcodes.RETURN, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD,
+            Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.FSTORE, Opcodes.DSTORE, Opcodes.ASTORE,
+            // Fabric: Array opcodes cause no problems in initialisers and should not be needlessly restricted.
+            //        Opcodes.IALOAD, Opcodes.LALOAD, Opcodes.FALOAD, Opcodes.DALOAD, Opcodes.AALOAD,
+            //        Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD, Opcodes.IASTORE, Opcodes.LASTORE,
+            //        Opcodes.FASTORE, Opcodes.DASTORE, Opcodes.AASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE
     };
 
 
@@ -192,12 +194,20 @@ public class Initialiser {
         }
 
         Map<LabelNode, LabelNode> labels = Bytecode.cloneLabels(ctor.insns);
+        // Fabric: also clone labels from the initialiser as they will be merged.
         for (AbstractInsnNode node : this.insns) {
             if (node instanceof LabelNode) {
-                continue;
+                labels.put((LabelNode) node, new LabelNode());
+            }
+        }
+        for (AbstractInsnNode node : this.insns) {
+            if (node instanceof LabelNode) {
+                // Fabric: Merge cloned labels instead of skipping them.
+                // continue;
             }
             if (node instanceof JumpInsnNode) {
-                throw new InvalidMixinException(this.mixin, "Unsupported JUMP opcode in initialiser in " + this.mixin);
+                // Fabric: Jumps cause no issues if labels are cloned properly and should not be needlessly restricted.
+                // throw new InvalidMixinException(this.mixin, "Unsupported JUMP opcode in initialiser in " + this.mixin);
             }
             
             ctor.insertBefore(marker, node.clone(labels));
