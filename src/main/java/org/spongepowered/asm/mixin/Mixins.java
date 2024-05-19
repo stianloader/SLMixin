@@ -95,7 +95,7 @@ public final class Mixins {
      * @param configFile path to configuration resource
      */
     public static void addConfiguration(String configFile) {
-        Mixins.createConfiguration(configFile, null, null);
+        Mixins.addConfiguration(configFile, (IMixinConfigSource) null);
     }
     
     /**
