@@ -42,7 +42,6 @@ import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.InjectionPoint.RestrictTargetLevel;
-import org.spongepowered.asm.mixin.injection.InjectionPoint.Specifier;
 import org.spongepowered.asm.mixin.injection.invoke.RedirectInjector;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.InjectionNodes.InjectionNode;
@@ -295,7 +294,7 @@ public abstract class Injector {
         IMixinContext mixin = this.info.getMixin();
         MethodNode method = injectorTarget.getMethod();
         Map<Integer, TargetNode> targetNodes = new TreeMap<Integer, TargetNode>();
-        List<AbstractInsnNode> nodes = new ArrayList<AbstractInsnNode>(32);
+        Collection<AbstractInsnNode> nodes = new ArrayList<AbstractInsnNode>(32);
         
         for (InjectionPoint injectionPoint : injectionPoints) {
             nodes.clear();
@@ -308,35 +307,20 @@ public abstract class Injector {
                         injectorTarget, injectorTarget.getMergedBy(), injectorTarget.getMergedPriority()));
             }
 
-            if (!this.findTargetNodes(method, injectionPoint, injectorTarget, nodes)) {
-                continue;
-            }
-            
-            Specifier specifier = injectionPoint.getSpecifier(Specifier.ALL);
-            if (specifier == Specifier.ONE && nodes.size() != 1) {
-                throw new InvalidInjectionException(this.info, String.format("%s on %s has specifier :ONE but matched %d instructions",
-                        injectionPoint, this, nodes.size()));
-            } else if (specifier != Specifier.ALL && nodes.size() > 1) {
-                AbstractInsnNode specified = nodes.get(specifier == Specifier.FIRST ? 0 : nodes.size() - 1);
-                this.addTargetNode(method, targetNodes, injectionPoint, specified);
-            } else {
+            if (this.findTargetNodes(method, injectionPoint, injectorTarget, nodes)) {
                 for (AbstractInsnNode insn : nodes) {
-                    this.addTargetNode(method, targetNodes, injectionPoint, insn);
+                    Integer key = method.instructions.indexOf(insn);
+                    TargetNode targetNode = targetNodes.get(key);
+                    if (targetNode == null) {
+                        targetNode = new TargetNode(insn);
+                        targetNodes.put(key, targetNode);
+                    }
+                    targetNode.nominators.add(injectionPoint);
                 }
             }
         }
         
         return targetNodes.values();
-    }
-
-    protected void addTargetNode(MethodNode method, Map<Integer, TargetNode> targetNodes, InjectionPoint injectionPoint, AbstractInsnNode insn) {
-        Integer key = method.instructions.indexOf(insn);
-        TargetNode targetNode = targetNodes.get(key);
-        if (targetNode == null) {
-            targetNode = new TargetNode(insn);
-            targetNodes.put(key, targetNode);
-        }
-        targetNode.nominators.add(injectionPoint);
     }
 
     protected boolean findTargetNodes(MethodNode into, InjectionPoint injectionPoint, InjectorTarget injectorTarget,
