@@ -183,7 +183,11 @@ class MethodMapper {
     private static String getMixinSourceId(MixinInfo mixin, String separator) {
         String sourceId = mixin.getConfig().getCleanSourceId();
         if (sourceId == null) {
-            return "";
+            String modId = FabricUtil.getModId(mixin.getConfig(), null);
+            if (modId == null) {
+                return "";
+            }
+            return modId + separator;
         }
         if (sourceId.length() > 12) {
             sourceId = sourceId.substring(0, 12);
