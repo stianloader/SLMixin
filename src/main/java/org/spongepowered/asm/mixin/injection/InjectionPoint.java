@@ -268,7 +268,7 @@ public abstract class InjectionPoint {
 
         public static int parse(AnnotationNode at) {
             int flags = 0;
-            if (Annotations.<Boolean>getValue(at, "unsafe", Boolean.FALSE)) {
+            if (Annotations.<Boolean>getValue(at, "unsafe", Boolean.TRUE)) {
                 flags |= InjectionPoint.Flags.UNSAFE;
             }
             return flags;

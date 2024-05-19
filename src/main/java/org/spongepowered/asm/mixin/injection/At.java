@@ -237,8 +237,11 @@ public @interface At {
      * to bypass this restriction, setting this option to <tt>true</tt> will
      * also allow other injectors to act upon constructors, though care should
      * be taken to ensure that the target is properly specified and attention is
-     * paid to the structure of the target bytecode.</p>  
+     * paid to the structure of the target bytecode.</p>
+     *
+     * <strong>FABRIC CHANGE</strong>: true by default.
+     *
      */
-    public boolean unsafe() default false;
+    public boolean unsafe() default true;
     
 }
