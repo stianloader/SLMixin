@@ -78,7 +78,7 @@ public class TypeHandle {
      * for related classes (eg. superclass) without using mirror
      */
     protected final ITypeHandleProvider typeProvider;
-    
+
     /**
      * Reference to this handle, for serialisation 
      */
@@ -295,6 +295,8 @@ public class TypeHandle {
 
     /**
      * Gets whether this handle is a supertype of the other handle
+     *
+     * @param other the TypeHandle to compare with
      */
     public boolean isSuperTypeOf(TypeHandle other) {
         List<TypeHandle> superTypes = new ArrayList<>();
@@ -309,7 +311,7 @@ public class TypeHandle {
         }
         return false;
     }
-    
+
     /**
      * Get the TypeReference for this type, used for serialisation
      */
