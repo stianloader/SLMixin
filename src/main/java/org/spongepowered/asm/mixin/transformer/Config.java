@@ -130,18 +130,18 @@ public class Config {
         return this.name.hashCode();
     }
 
-//    /**
-//     * Factory method, create a config from the specified config file and fail
-//     * over to the specified environment if no selector is present in the config
-//     * 
-//     * @param configFile config resource
-//     * @param outer failover environment
-//     * @return new config or null if invalid config version
-//     */
-//    @Deprecated
-//    public static Config create(String configFile, MixinEnvironment outer) {
-//        return Config.create(configFile, outer, null);
-//    }
+    /**
+     * Factory method, create a config from the specified config file and fail
+     * over to the specified environment if no selector is present in the config
+     *
+     * @param configFile config resource
+     * @param outer failover environment
+     * @return new config or null if invalid config version
+     */
+    @Deprecated
+    public static Config create(String configFile, MixinEnvironment outer) {
+        return Config.create(configFile, outer, null);
+    }
     
     /**
      * Factory method, create a config from the specified config file and fail
