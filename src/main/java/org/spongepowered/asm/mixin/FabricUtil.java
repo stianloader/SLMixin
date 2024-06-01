@@ -35,7 +35,8 @@ public final class FabricUtil {
     // fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch
     public static final int COMPATIBILITY_0_9_2 = 9002; // 0.9.2+mixin.0.8.2 incompatible local variable handling
     public static final int COMPATIBILITY_0_10_0 = 10000; // 0.10.0+mixin.0.8.4
-    public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_10_0;
+    public static final int COMPATIBILITY_0_14_0 = 14000; // 0.14.0+mixin.0.8.6
+    public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_14_0;
 
     public static String getModId(IMixinConfig config) {
         return getModId(config, "(unknown)");

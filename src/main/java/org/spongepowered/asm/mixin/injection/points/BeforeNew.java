@@ -118,7 +118,7 @@ public class BeforeNew extends InjectionPoint {
         }
         ITargetSelectorConstructor targetSelector = (ITargetSelectorConstructor)member;
         this.target = targetSelector.toCtorType();
-        this.desc = targetSelector.toCtorDesc();
+        this.desc = org.spongepowered.asm.mixin.FabricUtil.getCompatibility(data.getContext()) >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_14_0 ? targetSelector.toCtorDesc() : null;
     }
     
     /**
