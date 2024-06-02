@@ -39,7 +39,6 @@ import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.HandlerPrefix;
 import org.spongepowered.asm.mixin.transformer.MixinTargetContext;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 
 /**
  * Information about a constant modifier injector
@@ -55,14 +54,13 @@ public class ModifyConstantInjectionInfo extends InjectionInfo {
     }
     
     @Override
-    protected List<AnnotationNode> readInjectionPoints() {
-        List<AnnotationNode> ats = super.readInjectionPoints();
-        if (ats.isEmpty()) {
+    protected void readInjectionPoints() {
+        super.readInjectionPoints();
+        if (this.injectionPointAnnotations.isEmpty()) {
             AnnotationNode c = new AnnotationNode(ModifyConstantInjectionInfo.CONSTANT_ANNOTATION_CLASS);
             c.visit("log", Boolean.TRUE);
-            ats = ImmutableList.<AnnotationNode>of(c);
+            this.injectionPointAnnotations.add(c);
         }
-        return ats;
     }
 
     @Override

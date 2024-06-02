@@ -755,62 +755,62 @@ public final class MixinEnvironment implements ITokenProvider {
             
         },
 
-	    /**
-	     * Java 19 or above is required
-	     */
-	    JAVA_19(19, Opcodes.V19, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-		    | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-		    | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
+        /**
+         * Java 19 or above is required
+         */
+        JAVA_19(19, Opcodes.V19, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
+                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
 
-		    @Override
-		    boolean isSupported() {
-			    return JavaVersion.current() >= JavaVersion.JAVA_19 && ASM.isAtLeastVersion(9, 3);
-		    }
+            @Override
+            boolean isSupported() {
+                return JavaVersion.current() >= JavaVersion.JAVA_19 && ASM.isAtLeastVersion(9, 3);
+            }
 
-	    },
+        },
 
-	    /**
-	     * Java 20 or above is required
-	     */
-	    JAVA_20(20, Opcodes.V20, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-		    | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-		    | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
+        /**
+         * Java 20 or above is required
+         */
+        JAVA_20(20, Opcodes.V20, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
+                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
 
-		    @Override
-		    boolean isSupported() {
-			    return JavaVersion.current() >= JavaVersion.JAVA_20 && ASM.isAtLeastVersion(9, 4);
-		    }
+            @Override
+            boolean isSupported() {
+                return JavaVersion.current() >= JavaVersion.JAVA_20 && ASM.isAtLeastVersion(9, 4);
+            }
 
-	    },
+        },
 
-	    /**
-	     * Java 21 or above is required
-	     */
-	    JAVA_21(21, Opcodes.V21, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-		    | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-		    | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
+        /**
+         * Java 21 or above is required
+         */
+        JAVA_21(21, Opcodes.V21, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
+                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
 
-		    @Override
-		    boolean isSupported() {
-			    return JavaVersion.current() >= JavaVersion.JAVA_21 && ASM.isAtLeastVersion(9, 5);
-		    }
+            @Override
+            boolean isSupported() {
+                return JavaVersion.current() >= JavaVersion.JAVA_21 && ASM.isAtLeastVersion(9, 5);
+            }
 
-	    },
+        },
 
-	    /**
-	     * Java 22 or above is required
-	     */
-	    JAVA_22(22, Opcodes.V22, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
-		    | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
-		    | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
+        /**
+         * Java 22 or above is required
+         */
+        JAVA_22(22, Opcodes.V22, LanguageFeatures.METHODS_IN_INTERFACES | LanguageFeatures.PRIVATE_SYNTHETIC_METHODS_IN_INTERFACES
+                | LanguageFeatures.PRIVATE_METHODS_IN_INTERFACES | LanguageFeatures.NESTING | LanguageFeatures.DYNAMIC_CONSTANTS
+                | LanguageFeatures.RECORDS | LanguageFeatures.SEALED_CLASSES) {
 
-		    @Override
-		    boolean isSupported() {
-			    return JavaVersion.current() >= JavaVersion.JAVA_22 && ASM.isAtLeastVersion(9, 6);
-		    }
+            @Override
+            boolean isSupported() {
+                return JavaVersion.current() >= JavaVersion.JAVA_22 && ASM.isAtLeastVersion(9, 6);
+            }
 
-	    },
-	    ;
+        },
+        ;
         
         /**
          * Default compatibility level to use if not specified by the service 
@@ -981,6 +981,24 @@ public final class MixinEnvironment implements ITokenProvider {
             return null;
         }
 
+        /**
+         * Return the maximum compatibility level which is actually effective in
+         * the current runtime, taking into account the current JRE and ASM
+         * versions
+         */
+        public static CompatibilityLevel getMaxEffective() {
+            CompatibilityLevel max = CompatibilityLevel.JAVA_6;
+            for (CompatibilityLevel level : CompatibilityLevel.values()) {
+                if (level.isSupported()) {
+                    max = level;
+                }
+                if (level == CompatibilityLevel.MAX_SUPPORTED) {
+                    break;
+                }
+            }
+            return max;
+        }
+
         static String getSupportedVersions() {
             StringBuilder sb = new StringBuilder();
             boolean comma = false;
@@ -1013,6 +1031,109 @@ public final class MixinEnvironment implements ITokenProvider {
         
     }
     
+    /**
+     * Mixin features which can be specified in mixin configs as required for
+     * the config to be valid. No support for backward compatibility but should
+     * help in the future to allow mixin configs to specify the features they
+     * require rather than relying purely on minVersion. Only applies to
+     * features added in version 0.8.6 and higher.
+     */
+    public static enum Feature {
+
+        /**
+         * Supports the <tt>unsafe</tt> flag on &#64;At annotations to
+         * facilitate hassle-free constructor injections.
+         */
+        UNSAFE_INJECTION(true),
+
+        /**
+         * Support for the use of injector annotations in interface mixins
+         */
+        INJECTORS_IN_INTERFACE_MIXINS(false) {
+
+            @Override
+            public boolean isAvailable() {
+                return CompatibilityLevel.getMaxEffective().supports(LanguageFeatures.METHODS_IN_INTERFACES);
+            }
+
+            @Override
+            public boolean isEnabled() {
+                return MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.METHODS_IN_INTERFACES);
+            }
+
+        };
+
+        /**
+         * Existence of the enum constant does not necessarily indicate that the
+         * feature is actually supported by this version, for example if
+         * features can not be supported by future or previous JVM versions and
+         * need to be selectively enabled. This also allows us to add flags in
+         * the future to disable certain features globally for testing reasons.
+         */
+        private boolean enabled;
+
+        private Feature(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Get whether this feature is available in the current runtime
+         * environment
+         */
+        public boolean isAvailable() {
+            return true;
+        }
+
+        /**
+         * Get whether this feature is supported in the current environment and
+         * compatibility level
+         */
+        public boolean isEnabled() {
+            return this.isAvailable() && this.enabled;
+        }
+
+        /**
+         * Convenience function which returns a Feature constant based on the
+         * feature id, but returns null instead of throwing an exception.
+         *
+         * @param featureId Feature ID (enum constant name) to check for
+         * @return Feature or null
+         */
+        public static Feature get(String featureId) {
+            if (featureId == null) {
+                return null;
+            }
+            try {
+                return Feature.valueOf(featureId);
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
+
+        /**
+         * Check whether a particular feature exists in this mixin version, even
+         * if it's not currently available
+         *
+         * @param featureId Feature ID (enum constant name) to check for
+         * @return true if the feature exists
+         */
+        public static boolean exists(String featureId) {
+            return Feature.get(featureId) != null;
+        }
+
+        /**
+         * Check whether a particular feature is available and enabled
+         *
+         * @param featureId Feature ID (enum constant name) to check for
+         * @return true if the feature is currently available
+         */
+        public static boolean isActive(String featureId) {
+            Feature feature = Feature.get(featureId);
+            return feature != null && feature.isEnabled();
+        }
+
+    }
+
     /**
      * Wrapper for providing a natural sorting order for providers
      */
@@ -1186,6 +1307,7 @@ public final class MixinEnvironment implements ITokenProvider {
             printer.kv("Internal Version", version);
             printer.kv("Java Version", "%s (supports compatibility %s)", JavaVersion.current(), CompatibilityLevel.getSupportedVersions());
             printer.kv("Default Compatibility Level", MixinEnvironment.getCompatibilityLevel());
+            printer.kv("Max Effective Compatibility Level", CompatibilityLevel.getMaxEffective());
             printer.kv("Detected ASM Version", ASM.getVersionString());
             printer.kv("Detected ASM Supports Java", ASM.getClassVersionString()).hr();
             printer.kv("Service Name", serviceName);
@@ -1198,6 +1320,10 @@ public final class MixinEnvironment implements ITokenProvider {
                     indent.append("- ");
                 }
                 printer.kv(option.property, "%s<%s>", indent, option);
+            }
+            printer.hr();
+            for (Feature feature : Feature.values()) {
+                printer.kv(feature.name(), "available=<%s> enabled=<%s>", feature.isAvailable(), feature.isEnabled());
             }
             printer.hr().kv("Detected Side", side);
             printer.print(System.err);

@@ -25,16 +25,8 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
@@ -52,6 +44,7 @@ import org.spongepowered.asm.mixin.extensibility.IActivityContext.IActivity;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.gen.AccessorInfo;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.struct.Constructor;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.InjectorGroupInfo;
 import org.spongepowered.asm.mixin.injection.struct.Target;
@@ -68,6 +61,8 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo.SearchType;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Traversal;
 import org.spongepowered.asm.mixin.transformer.ext.Extensions;
 import org.spongepowered.asm.mixin.transformer.meta.MixinMerged;
+import org.spongepowered.asm.mixin.transformer.struct.Initialiser;
+import org.spongepowered.asm.mixin.transformer.struct.InsnRange;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
 import org.spongepowered.asm.obfuscation.RemapperChain;
@@ -92,7 +87,7 @@ import com.google.common.collect.BiMap;
  * in the mixin to the appropriate members in the target class hierarchy. 
  */
 public class MixinTargetContext extends ClassContext implements IMixinContext {
-    
+
     /**
      * Logger
      */
@@ -183,6 +178,11 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * upgraded if the version is below this value
      */
     private int minRequiredClassVersion = CompatibilityLevel.JAVA_6.getClassVersion();
+    
+    /**
+     * The mixin's initialiser 
+     */
+    private Initialiser initialiser;
 
     /**
      * ctor
@@ -204,6 +204,8 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
         
         InnerClassGenerator icg = context.getExtensions().<InnerClassGenerator>getGenerator(InnerClassGenerator.class);
         this.innerClasses = icg.getInnerClasses(this.mixin, this.getTargetClassRef());
+        
+        this.initialiser = this.findInitialiser();
     }
     
     /**
@@ -338,6 +340,14 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     public TargetClassContext getTarget() {
         return this.targetClass;
     }
+    
+    /**
+     * Get the target class name
+     */
+    @Override
+    public String getTargetClassName() {
+        return this.getTarget().getClassName();
+    }
 
     /**
      * Get the target class reference
@@ -448,7 +458,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     public boolean requireOverwriteAnnotations() {
         return this.mixin.getParent().requireOverwriteAnnotations();
     }
-    
+
     /**
      * Handles "re-parenting" the method supplied, changes all references to the
      * mixin class to refer to the target class (for field accesses and method
@@ -561,6 +571,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
 
             localVarActivity.next("var=%s", local.name);
             local.desc = this.transformSingleDescriptor(Type.getType(local.desc));
+            local.signature = null;
         }
         localVarActivity.end();
     }
@@ -1019,6 +1030,61 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     }
 
     /**
+     * Get insns corresponding to the instance initialiser (hopefully) from the
+     * supplied constructor.
+     * 
+     * @return initialiser bytecode extracted from the supplied constructor, or
+     *      null if the constructor range could not be parsed
+     */
+    final Initialiser getInitialiser() {
+        return this.initialiser;
+    }
+    
+    private Initialiser findInitialiser() {
+        // Try to find a suitable constructor, we need a constructor with line numbers in order to extract the initialiser 
+        MethodNode ctor = this.getConstructor();
+        if (ctor == null) {
+            return null;
+        }
+        
+        // Find the range of line numbers which corresponds to the constructor body
+        InsnRange init = Constructor.getRange(ctor);
+        if (!init.isValid()) {
+            return null;
+        }
+        
+        Initialiser initialiser = new Initialiser(this, ctor, init);
+        for (Constructor targetCtor : this.getTarget().getConstructors()) {
+            if (targetCtor.isInjectable()) {
+                targetCtor.inspect(initialiser);
+            }
+        }
+        return initialiser;
+    }
+
+    /**
+     * Finds a suitable ctor for reading the instance initialiser bytecode
+     * 
+     * @return appropriate ctor or null if none found
+     */
+    private MethodNode getConstructor() {
+        MethodNode ctor = null;
+        
+        for (MethodNode method : this.getMethods()) {
+            if (Constants.CTOR.equals(method.name) && Bytecode.methodHasLineNumbers(method)) {
+                if (ctor == null) {
+                    ctor = method;
+                } else {
+                    // Not an error condition, just weird
+                    MixinTargetContext.logger.warn("Mixin {} has multiple constructors, <init>{} was selected\n", this, ctor.desc);
+                }
+            }
+        }
+        
+        return ctor;
+    }
+
+    /**
      * Get a target method handle from the target class
      * 
      * @param method method to get a target handle for
@@ -1298,7 +1364,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @return unique method name
      */
     String getUniqueName(MethodNode method, boolean preservePrefix) {
-        return this.targetClassInfo.getMethodMapper().getUniqueName(method, this.sessionId, preservePrefix);
+        return this.targetClassInfo.getMethodMapper().getUniqueName(this.mixin, method, this.sessionId, preservePrefix);
     }
 
     /**
@@ -1309,7 +1375,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @return unique field name
      */
     String getUniqueName(FieldNode field) {
-        return this.targetClassInfo.getMethodMapper().getUniqueName(field, this.sessionId);
+        return this.targetClassInfo.getMethodMapper().getUniqueName(this.mixin, field, this.sessionId);
     }
     
     /**
