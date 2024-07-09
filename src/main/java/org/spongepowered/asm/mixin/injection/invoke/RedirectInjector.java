@@ -104,7 +104,7 @@ public class RedirectInjector extends InvokeInjector {
     /**
      * Meta decoration object for redirector target nodes
      */
-    public class Meta {
+    class Meta {
         
         public static final String KEY = "redirector";
 
