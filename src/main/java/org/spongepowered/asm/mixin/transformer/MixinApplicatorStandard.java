@@ -72,6 +72,7 @@ import org.spongepowered.asm.util.throwables.ConstraintViolationException;
 import org.spongepowered.asm.util.throwables.InvalidConstraintException;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Applies mixins to a target class
@@ -104,14 +105,29 @@ class MixinApplicatorStandard {
         /**
          * Enumerate injectors and scan for injection points 
          */
-        PREINJECT,
+        INJECT_PREPARE,
+        
+        /**
+         * Apply accessors and invokers 
+         */
+        ACCESSOR,
+        
+        /**
+         * Apply preinjection steps on injectors from previous pass 
+         */
+        INJECT_PREINJECT,
         
         /**
          * Apply injectors from previous pass 
          */
-        INJECT
+        INJECT_APPLY
 
     }
+    
+    /**
+     * Order collection to use for all passes except ApplicatorPass.INJECT
+     */
+    protected static final Set<Integer> ORDERS_NONE = ImmutableSet.<Integer>of(Integer.valueOf(0)); 
 
     /**
      * Log more things
@@ -213,17 +229,28 @@ class MixinApplicatorStandard {
                 activity.next("%s Applicator Phase", pass);
                 Section timer = this.profiler.begin("pass", pass.name().toLowerCase(Locale.ROOT));
                 IActivity applyActivity = this.activities.begin("Mixin");
-                for (Iterator<MixinTargetContext> iter = mixinContexts.iterator(); iter.hasNext();) {
-                    current = iter.next();
-                    applyActivity.next(current.toString());
-                    try {
-                        this.applyMixin(current, pass);
-                    } catch (InvalidMixinException ex) {
-                        if (current.isRequired()) {
-                            throw ex;
+                
+                Set<Integer> orders = MixinApplicatorStandard.ORDERS_NONE;
+                if (pass == ApplicatorPass.INJECT_APPLY) {
+                    orders = new TreeSet<Integer>();
+                    for (MixinTargetContext context : mixinContexts) {
+                        context.getInjectorOrders(orders);
+                    }
+                }
+            
+                for (Integer injectorOrder : orders) {
+                    for (Iterator<MixinTargetContext> iter = mixinContexts.iterator(); iter.hasNext();) {
+                        current = iter.next();
+                        applyActivity.next(current.toString());
+                        try {
+                            this.applyMixin(current, pass, injectorOrder.intValue());
+                        } catch (InvalidMixinException ex) {
+                            if (current.isRequired()) {
+                                throw ex;
+                            }
+                            this.context.addSuppressed(ex);
+                            iter.remove(); // Do not process this mixin further
                         }
-                        this.context.addSuppressed(ex);
-                        iter.remove(); // Do not process this mixin further
                     }
                 }
                 applyActivity.end();
@@ -263,7 +290,7 @@ class MixinApplicatorStandard {
      * 
      * @param mixin Mixin to apply
      */
-    protected final void applyMixin(MixinTargetContext mixin, ApplicatorPass pass) {
+    protected final void applyMixin(MixinTargetContext mixin, ApplicatorPass pass, int injectorOrder) {
         IActivity activity = this.activities.begin("Apply");
         switch (pass) {
             case MAIN:
@@ -283,16 +310,24 @@ class MixinApplicatorStandard {
                 this.applyInitialisers(mixin);
                 break;
                 
-            case PREINJECT:
+            case INJECT_PREPARE:
                 activity.next("Prepare Injections");
                 this.prepareInjections(mixin);
                 break;
                 
-            case INJECT:
+            case ACCESSOR:
                 activity.next("Apply Accessors");
                 this.applyAccessors(mixin);
+                break;
+                
+            case INJECT_PREINJECT:
                 activity.next("Apply Injections");
-                this.applyInjections(mixin);
+                this.applyPreInjections(mixin);
+                break;
+                
+            case INJECT_APPLY:
+                activity.next("Apply Injections");
+                this.applyInjections(mixin, injectorOrder);
                 break;
                 
             default:
@@ -697,12 +732,24 @@ class MixinApplicatorStandard {
     }
     
     /**
+     * Run preinject application on all injectors discovered in the previous
+     * pass
+     * 
+     * @param mixin Mixin being applied
+     * @param injectorOrder injector order for this pass
+     */
+    protected void applyPreInjections(MixinTargetContext mixin) {
+        mixin.applyPreInjections();
+    }
+
+    /**
      * Apply all injectors discovered in the previous pass
      * 
      * @param mixin Mixin being applied
+     * @param injectorOrder injector order for this pass
      */
-    protected void applyInjections(MixinTargetContext mixin) {
-        mixin.applyInjections();
+    protected void applyInjections(MixinTargetContext mixin, int injectorOrder) {
+        mixin.applyInjections(injectorOrder);
     }
     
     /**

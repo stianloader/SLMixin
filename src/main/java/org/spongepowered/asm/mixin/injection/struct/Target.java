@@ -441,6 +441,22 @@ public class Target implements Comparable<Target>, Iterable<AbstractInsnNode> {
      *      of the supplied args array
      */
     public int[] generateArgMap(Type[] args, int start) {
+        return this.generateArgMap(args, start, false);
+    }
+    
+    /**
+     * Generate an array containing local indexes for the specified args,
+     * returns an array of identical size to the supplied array with an
+     * allocated local index in each corresponding position
+     * 
+     * @param args Argument types
+     * @param start starting index
+     * @param fresh allocate fresh locals only, do not reuse existing argmap
+     *      slots
+     * @return array containing a corresponding local arg index for each member
+     *      of the supplied args array
+     */
+    public int[] generateArgMap(Type[] args, int start, boolean fresh) {
         if (this.argMapVars == null) {
             this.argMapVars = new ArrayList<Integer>();
         }
@@ -448,7 +464,7 @@ public class Target implements Comparable<Target>, Iterable<AbstractInsnNode> {
         int[] argMap = new int[args.length];
         for (int arg = start, index = 0; arg < args.length; arg++) {
             int size = args[arg].getSize();
-            argMap[arg] = this.allocateArgMapLocal(index, size);
+            argMap[arg] = fresh ? this.allocateLocals(size) : this.allocateArgMapLocal(index, size);
             index += size;
         }
         return argMap;

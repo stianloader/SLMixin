@@ -24,36 +24,20 @@
  */
 package org.spongepowered.asm.mixin.injection.struct;
 
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.code.Injector;
-import org.spongepowered.asm.mixin.injection.invoke.RedirectInjector;
-import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.AnnotationType;
-import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.HandlerPrefix;
-import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.InjectorOrder;
-import org.spongepowered.asm.mixin.transformer.MixinTargetContext;
-
 /**
- * Information about a redirector injector
+ * An InjectionNode decoration which can chain to a previously registered
+ * decoration with the same type and key.
+ * 
+ * @param <T> the decoration type
  */
-@AnnotationType(Redirect.class)
-@HandlerPrefix("redirect")
-@InjectorOrder(InjectorOrder.REDIRECT)
-public class RedirectInjectionInfo extends InjectionInfo {
+public interface IChainedDecoration<T> {
+    
+    /**
+     * Called when this decoration replaces a previous decoration with the same
+     * key
+     * 
+     * @param old The previous decoration
+     */
+    public abstract void replace(T old);
 
-    public RedirectInjectionInfo(MixinTargetContext mixin, MethodNode method, AnnotationNode annotation) {
-        super(mixin, method, annotation);
-    }
-    
-    @Override
-    protected Injector parseInjector(AnnotationNode injectAnnotation) {
-        return new RedirectInjector(this);
-    }
-    
-    @Override
-    protected String getDescription() {
-        return "Redirector";
-    }
-    
 }
