@@ -109,9 +109,60 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
     public @interface HandlerPrefix {
         
         /**
+         * Default conform prefix for handler methods 
+         */
+        public static final String DEFAULT = "handler";
+
+        /**
          * String prefix for conforming handler methods
          */
         public String value();
+        
+    }
+    
+    /**
+     * Decoration for subclasses which specifies the order (phase) in which the
+     * injector should be applied relative to other injectors. Built-in
+     * injectors except for redirectors all run at DEFAULT unless specified in
+     * the injector annotation.
+     * 
+     * <p>Injectors in the same order are sorted by mixin priority and
+     * declaration order within the mixin as always.</p>
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.TYPE)
+    public @interface InjectorOrder {
+
+        /**
+         * An early injector, run before most injectors
+         */
+        public static final int EARLY = 0;
+        
+        /**
+         * Default order, all injectors except redirect run here unless manually
+         * adjusted
+         */
+        public static final int DEFAULT = 1000;
+
+        /**
+         * Late injector, runs after most injectors but before redirects 
+         */
+        public static final int LATE = 2000;
+        
+        /**
+         * Built-in order for Redirect injectors
+         */
+        public static final int REDIRECT = 10000;
+        
+        /**
+         * Injector which should run after redirect injector 
+         */
+        public static final int AFTER_REDIRECT = 20000;
+        
+        /**
+         * String prefix for conforming handler methods
+         */
+        public int value() default InjectorOrder.DEFAULT;
         
     }
 
@@ -137,7 +188,7 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
             this.annotationDesc = Type.getDescriptor(annotationType);
             
             HandlerPrefix handlerPrefix = type.<HandlerPrefix>getAnnotation(HandlerPrefix.class);
-            this.prefix = handlerPrefix != null ? handlerPrefix.value() : InjectionInfo.DEFAULT_PREFIX;
+            this.prefix = handlerPrefix != null ? handlerPrefix.value() : HandlerPrefix.DEFAULT;
         }
         
         InjectionInfo create(MixinTargetContext mixin, MethodNode method, AnnotationNode annotation) {
@@ -155,11 +206,6 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
             }
         }
     }
-    
-    /**
-     * Default conform prefix for handler methods 
-     */
-    public static final String DEFAULT_PREFIX = "handler";
     
     /**
      * Registry of subclasses
@@ -269,6 +315,12 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
     private List<String> messages;
     
     /**
+     * Injector order, parsed from either the injector annotation or uses the
+     * default for this injection type 
+     */
+    private int order = InjectorOrder.DEFAULT;
+    
+    /**
      * ctor
      * 
      * @param mixin Mixin data
@@ -307,6 +359,8 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
             this.readInjectionPoints();
             activity.next("Parse Requirements");
             this.parseRequirements();
+            activity.next("Parse Order");
+            this.parseOrder();
             activity.next("Parse Selectors");
             this.parseSelectors();
             activity.next("Find Targets");
@@ -355,6 +409,17 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
             this.maxCallbackCount = Math.max(Math.max(this.requiredCallbackCount, 1), allow);
         }
     }
+    
+    protected void parseOrder() {
+        Integer userOrder = Annotations.<Integer>getValue(this.annotation, "order");
+        if (userOrder != null) {
+            this.order = userOrder.intValue();
+            return;
+        }
+
+        InjectorOrder injectorDefault = this.getClass().<InjectorOrder>getAnnotation(InjectorOrder.class);
+        this.order = injectorDefault != null ? injectorDefault.value() : InjectorOrder.DEFAULT;
+    }
 
     protected void parseSelectors() {
         Set<ITargetSelector> selectors = new LinkedHashSet<ITargetSelector>();
@@ -385,6 +450,13 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
      */
     public boolean isValid() {
         return this.targets.size() > 0 && this.injectionPoints.size() > 0;
+    }
+    
+    /**
+     * Get the application order for this injector type
+     */
+    public int getOrder() {
+        return this.order;
     }
     
     /**
@@ -624,7 +696,7 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
      */
     public static String getInjectorPrefix(AnnotationNode annotation) {
         if (annotation == null) {
-            return InjectionInfo.DEFAULT_PREFIX;
+            return HandlerPrefix.DEFAULT;
         }
         
         for (InjectorEntry injector : InjectionInfo.registry.values()) {
@@ -633,7 +705,7 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
             }
         }
         
-        return InjectionInfo.DEFAULT_PREFIX;
+        return HandlerPrefix.DEFAULT;
     }
 
     static String describeInjector(IMixinContext mixin, AnnotationNode annotation, MethodNode method) {

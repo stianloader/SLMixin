@@ -40,6 +40,7 @@ import org.spongepowered.asm.mixin.injection.code.Injector;
 import org.spongepowered.asm.mixin.injection.code.InjectorTarget;
 import org.spongepowered.asm.mixin.injection.points.BeforeFieldAccess;
 import org.spongepowered.asm.mixin.injection.points.BeforeNew;
+import org.spongepowered.asm.mixin.injection.struct.ArgOffsets;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.InjectionNodes.InjectionNode;
 import org.spongepowered.asm.mixin.injection.struct.Target;
@@ -104,7 +105,7 @@ public class RedirectInjector extends InvokeInjector {
     /**
      * Meta decoration object for redirector target nodes
      */
-    public class Meta {
+    class Meta {
         
         public static final String KEY = "redirector";
 
@@ -159,6 +160,7 @@ public class RedirectInjector extends InvokeInjector {
     static class RedirectedInvokeData extends InjectorData {
         
         final MethodInsnNode node;
+        final boolean isStatic;
         final Type returnType;
         final Type[] targetArgs;
         final Type[] handlerArgs;
@@ -166,9 +168,10 @@ public class RedirectInjector extends InvokeInjector {
         RedirectedInvokeData(Target target, MethodInsnNode node) {
             super(target);
             this.node = node;
+            this.isStatic = node.getOpcode() == Opcodes.INVOKESTATIC;
             this.returnType = Type.getReturnType(node.desc);
             this.targetArgs = Type.getArgumentTypes(node.desc);
-            this.handlerArgs = node.getOpcode() == Opcodes.INVOKESTATIC
+            this.handlerArgs = this.isStatic
                     ? this.targetArgs
                     : ObjectArrays.concat(Type.getObjectType(node.owner), this.targetArgs);
         }
@@ -267,7 +270,7 @@ public class RedirectInjector extends InvokeInjector {
         }
         
         if (node != null ) {
-            Meta other = node.getDecoration(Meta.KEY);
+            Meta other = node.<Meta>getDecoration(Meta.KEY);
             
             if (other != null && other.getOwner() != this) {
                 if (other.priority >= this.meta.priority) {
@@ -358,7 +361,7 @@ public class RedirectInjector extends InvokeInjector {
     }
 
     protected boolean preInject(InjectionNode node) {
-        Meta other = node.getDecoration(Meta.KEY);
+        Meta other = node.<Meta>getDecoration(Meta.KEY);
         if (other.getOwner() != this) {
             Injector.logger.warn("{} conflict. Skipping {} with priority {}, already redirected by {} with priority {}",
                     this.annotationType, this.info, this.meta.priority, other.name, other.priority);
@@ -392,6 +395,7 @@ public class RedirectInjector extends InvokeInjector {
         Extension extraLocals = target.extendLocals().add(invoke.handlerArgs).add(1);
         Extension extraStack = target.extendStack().add(1); // Normally only need 1 extra stack pos to store target ref 
         int[] argMap = this.storeArgs(target, invoke.handlerArgs, insns, 0);
+        ArgOffsets offsets = new ArgOffsets(invoke.isStatic ? 0 : 1, invoke.targetArgs.length);
         if (invoke.captureTargetArgs > 0) {
             int argSize = Bytecode.getArgsSize(target.arguments, 0, invoke.captureTargetArgs);
             extraLocals.add(argSize);
@@ -404,6 +408,7 @@ public class RedirectInjector extends InvokeInjector {
             insns.add(new TypeInsnNode(Opcodes.CHECKCAST, invoke.returnType.getInternalName()));
         }
         target.replaceNode(invoke.node, champion, insns);
+        node.decorate(ArgOffsets.KEY, offsets);
         extraLocals.apply();
         extraStack.apply();
     }

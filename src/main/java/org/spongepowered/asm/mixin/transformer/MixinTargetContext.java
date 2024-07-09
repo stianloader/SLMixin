@@ -1427,9 +1427,20 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     }
 
     /**
-     * Apply injectors discovered in the {@link #prepareInjections()} pass
+     * Get all injector order values for injectors in this mixin
+     * 
+     * @param orders Orders Set to add this mixin's orders to
      */
-    void applyInjections() {
+    void getInjectorOrders(Set<Integer> orders) {
+        for (InjectionInfo injectInfo : this.injectors) {
+            orders.add(injectInfo.getOrder());
+        }
+    }
+    
+    /**
+     * Run the preinject step for all discovered injectors
+     */
+    void applyPreInjections() {
         this.activities.clear();
         
         try {
@@ -1439,23 +1450,48 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
                 preInjectActivity.next(injectInfo.toString());
                 injectInfo.preInject();
             }
+            applyActivity.end();
+        } catch (InvalidMixinException ex) {
+            ex.prepend(this.activities);
+            throw ex;
+        } catch (Exception ex) {
+            throw new InvalidMixinException(this, "Unexpecteded " + ex.getClass().getSimpleName() + " whilst transforming the mixin class:", ex,
+                    this.activities);
+        }
+    }
 
-            applyActivity.next("Inject");
+    /**
+     * Apply injectors discovered in the {@link #prepareInjections()} pass
+     * 
+     * @param injectorOrder injector order for this pass
+     */
+    void applyInjections(int injectorOrder) {
+        this.activities.clear();
+        
+        List<InjectionInfo> injectors = new ArrayList<InjectionInfo>();
+        for (InjectionInfo injectInfo : this.injectors) {
+            if (injectInfo.getOrder() == injectorOrder) {
+                injectors.add(injectInfo);
+            }
+        }
+        
+        try {
+            IActivity applyActivity = this.activities.begin("Inject");
             IActivity injectActivity = this.activities.begin("?");
-            for (InjectionInfo injectInfo : this.injectors) {
+            for (InjectionInfo injectInfo : injectors) {
                 injectActivity.next(injectInfo.toString());
                 injectInfo.inject();
             }
 
             applyActivity.next("PostInject");
             IActivity postInjectActivity = this.activities.begin("?");
-            for (InjectionInfo injectInfo : this.injectors) {
+            for (InjectionInfo injectInfo : injectors) {
                 postInjectActivity.next(injectInfo.toString());
                 injectInfo.postInject();
             }
 
             applyActivity.end();
-            this.injectors.clear();
+            this.injectors.removeAll(injectors);
         } catch (InvalidMixinException ex) {
             ex.prepend(this.activities);
             throw ex;
