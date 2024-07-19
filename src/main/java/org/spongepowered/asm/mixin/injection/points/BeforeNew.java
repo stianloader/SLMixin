@@ -34,6 +34,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.mixin.FabricUtil;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.InjectionPoint.AtCode;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelector;
@@ -106,6 +107,11 @@ public class BeforeNew extends InjectionPoint {
      */
     private final int ordinal;
 
+    /**
+     * Fabric: Whether to ignore the supplied descriptor in keeping with 0.8.5 and below.
+     */
+    private final boolean ignoreDesc;
+
     public BeforeNew(InjectionPointData data) {
         super(data);
         
@@ -118,7 +124,8 @@ public class BeforeNew extends InjectionPoint {
         }
         ITargetSelectorConstructor targetSelector = (ITargetSelectorConstructor)member;
         this.target = targetSelector.toCtorType();
-        this.desc = org.spongepowered.asm.mixin.FabricUtil.getCompatibility(data.getContext()) >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_14_0 ? targetSelector.toCtorDesc() : null;
+        this.desc = targetSelector.toCtorDesc();
+        this.ignoreDesc = FabricUtil.getCompatibility(data.getContext()) < FabricUtil.COMPATIBILITY_0_14_0;
     }
     
     /**
@@ -132,7 +139,7 @@ public class BeforeNew extends InjectionPoint {
      * Gets the descriptor from the injection point, can return null
      */
     public String getDescriptor() {
-        return this.desc;
+        return this.ignoreDesc ? null : this.desc;
     }
 
     @SuppressWarnings("unchecked")
@@ -159,7 +166,7 @@ public class BeforeNew extends InjectionPoint {
         
         if (this.desc != null) {
             for (TypeInsnNode newNode : newNodes) {
-                if (BeforeNew.findInitNodeFor(insns, newNode, this.desc) != null) {
+                if (BeforeNew.findInitNodeFor(insns, newNode, this.getDescriptor()) != null) {
                     nodes.add(newNode);
                     found = true;
                 }
