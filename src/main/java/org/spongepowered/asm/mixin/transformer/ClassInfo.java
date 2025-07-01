@@ -950,12 +950,12 @@ public final class ClassInfo {
             this.fields.add(new Field(field.getName(), org.objectweb.asm.Type.getDescriptor(field.getType()), field.getModifiers()));
         }
 
-        this.isProbablyStatic = true;
+        this.isProbablyStatic = cls.getEnclosingClass() == null || Modifier.isStatic(cls.getModifiers());
         this.methodMapper = null;
 
         this.access = cls.getModifiers();
-        this.isInner = false;
-        this.outerName = null;
+        this.isInner = cls.getEnclosingClass() != null;
+        this.outerName = cls.getDeclaringClass() != null ? getName(cls.getDeclaringClass()) : null;
     }
 
     private static String getName(Class<?> cls) {
