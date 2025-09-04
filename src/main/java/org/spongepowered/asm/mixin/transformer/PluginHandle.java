@@ -24,15 +24,11 @@
  */
 package org.spongepowered.asm.mixin.transformer;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
-import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-import org.spongepowered.asm.mixin.throwables.CompanionPluginError;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 
@@ -42,30 +38,7 @@ import com.google.common.base.Strings;
  * Convenience wrapper for mixin config plugins
  */
 class PluginHandle {
-    
-    /**
-     * Compatibility mode for companion plugins
-     */
-    enum CompatibilityMode {
 
-        /**
-         * Companion plugin is compatible or unknown
-         */
-        NORMAL,
-        
-        /**
-         * Companion plugin is outdated but running anyway, preApply and
-         * postApply will be called via reflection
-         */
-        COMPATIBLE,
-        
-        /**
-         * Companion plugin is disabled due to incompatibility
-         */
-        FAILED
-    
-    }
-    
     private static final ILogger logger = MixinService.getService().getLogger("mixin");
 
     /**
@@ -77,16 +50,6 @@ class PluginHandle {
      * Plugin instance, can be null
      */
     private final IMixinConfigPlugin plugin;
-    
-    /**
-     * Compatibility mode for companion plugin
-     */
-    private CompatibilityMode mode = CompatibilityMode.NORMAL;
-    
-    /**
-     * Reflection objects for calling legacy (pre 0.8) preApply and postApply
-     */
-    private Method mdPreApply, mdPostApply;
 
     PluginHandle(MixinConfig parent, IMixinService service, String pluginClassName) {
         IMixinConfigPlugin plugin = null;
@@ -101,7 +64,7 @@ class PluginHandle {
                 plugin = null;
             }
         }
-        
+
         this.parent = parent;
         this.plugin = plugin;
     }
@@ -139,28 +102,7 @@ class PluginHandle {
         if (this.plugin == null) {
             return;
         }
-        
-        if (this.mode == CompatibilityMode.FAILED) {
-            throw new IllegalStateException("Companion plugin failure for [" + this.parent + "] plugin [" + this.plugin.getClass() + "]");
-        }
-        
-        if (this.mode == CompatibilityMode.COMPATIBLE) {
-            try {
-                this.applyLegacy(this.mdPreApply, targetClassName, targetClass, mixinClassName, mixinInfo);
-            } catch (Exception ex) {
-                this.mode = CompatibilityMode.FAILED;
-                throw ex;
-            }
-            return;
-        } 
-
-        try {
-            this.plugin.preApply(targetClassName, targetClass, mixinClassName, mixinInfo);
-        } catch (AbstractMethodError ex) {
-            this.mode = CompatibilityMode.COMPATIBLE;
-            this.initReflection();
-            this.preApply(targetClassName, targetClass, mixinClassName, mixinInfo);
-        }
+        this.plugin.preApply(targetClassName, targetClass, mixinClassName, mixinInfo);
     }
 
     /**
@@ -170,64 +112,7 @@ class PluginHandle {
         if (this.plugin == null) {
             return;
         }
-        
-        if (this.mode == CompatibilityMode.FAILED) {
-            throw new IllegalStateException("Companion plugin failure for [" + this.parent + "] plugin [" + this.plugin.getClass() + "]");
-        }
-        
-        if (this.mode == CompatibilityMode.COMPATIBLE) {
-            try {
-                this.applyLegacy(this.mdPostApply, targetClassName, targetClass, mixinClassName, mixinInfo);
-            } catch (Exception ex) {
-                this.mode = CompatibilityMode.FAILED;
-                throw ex;
-            }
-            return;
-        } 
-
-        try {
-            this.plugin.postApply(targetClassName, targetClass, mixinClassName, mixinInfo);
-        } catch (AbstractMethodError ex) {
-            this.mode = CompatibilityMode.COMPATIBLE;
-            this.initReflection();
-            this.postApply(targetClassName, targetClass, mixinClassName, mixinInfo);
-        }
-    }
-
-    private void initReflection() {
-        if (this.mdPreApply != null) {
-            return;
-        }
-        
-        try {
-            Class<?> pluginClass = this.plugin.getClass();
-            this.mdPreApply = pluginClass.getMethod("preApply", String.class, org.spongepowered.asm.lib.tree.ClassNode.class, String.class,
-                    IMixinInfo.class);
-            this.mdPostApply = pluginClass.getMethod("postApply", String.class, org.spongepowered.asm.lib.tree.ClassNode.class, String.class,
-                    IMixinInfo.class);
-        } catch (Throwable th) {
-            PluginHandle.logger.catching(th);
-        }
-    }
-
-    private void applyLegacy(Method method, String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        try {
-            method.invoke(this.plugin, targetClassName, new org.spongepowered.asm.lib.tree.ClassNode(targetClass), mixinClassName, mixinInfo);
-        } catch (LinkageError err) {
-            throw new CompanionPluginError(this.apiError("Accessing [" + err.getMessage() + "]"), err);
-        } catch (IllegalAccessException ex) {
-            throw new CompanionPluginError(this.apiError("Fallback failed [" + ex.getMessage() + "]"), ex);
-        } catch (IllegalArgumentException ex) {
-            throw new CompanionPluginError(this.apiError("Fallback failed [" + ex.getMessage() + "]"), ex);
-        } catch (InvocationTargetException ex) {
-            Throwable th = ex.getCause() != null ? ex.getCause() : ex;
-            throw new CompanionPluginError(this.apiError("Fallback failed [" + th.getMessage() + "]"), th);
-        }
-    }
-
-    private String apiError(String message) {
-        return String.format("Companion plugin attempted to use a deprected API in [%s] plugin [%s]: %s",
-                this.parent, this.plugin.getClass().getName(), message);
+        this.plugin.postApply(targetClassName, targetClass, mixinClassName, mixinInfo);
     }
 
 }

@@ -39,27 +39,19 @@ module org.spongepowered.mixin {
     requires transitive org.objectweb.asm.tree.analysis;
     requires transitive org.objectweb.asm.util;
     requires java.logging;
-    
+
     //
     // Modules we require for compilation but don't necessarily need at runtime
     //
     requires static org.apache.logging.log4j.core;
-    requires static transitive cpw.mods.modlauncher;
-    requires static cpw.mods.securejarhandler;
     requires static transitive org.apache.logging.log4j;
-    
+
     //
     // Automatic modules we depend on, using static to avoid the forward compatibility mess
     //
-    requires static jopt.simple;
-    
-    // Guava, by file name and official module
-    requires static com.google.common;
-    requires static guava;
-    
-    // Gson, by file name and official module
-    requires static com.google.gson;
-    requires static gson;
+    // requires static jopt.simple;
+    requires com.google.common; // (guava)
+    requires com.google.gson;
 
     // Gson's module dependencies
     // Optional dependency on java.sql
@@ -73,8 +65,6 @@ module org.spongepowered.mixin {
     exports org.spongepowered.asm.launch;
     exports org.spongepowered.asm.launch.platform;
     exports org.spongepowered.asm.launch.platform.container;
-    exports org.spongepowered.asm.lib;
-    exports org.spongepowered.asm.lib.tree;
     exports org.spongepowered.asm.logging;
     exports org.spongepowered.asm.mixin;
     exports org.spongepowered.asm.mixin.connect;
@@ -93,6 +83,7 @@ module org.spongepowered.mixin {
     exports org.spongepowered.asm.mixin.injection.throwables;
     exports org.spongepowered.asm.mixin.refmap;
     exports org.spongepowered.asm.mixin.throwables;
+    exports org.spongepowered.asm.mixin.transformer; // For the IMixinTransformer class
     exports org.spongepowered.asm.mixin.transformer.ext;
     exports org.spongepowered.asm.mixin.transformer.throwables;
     exports org.spongepowered.asm.obfuscation;
@@ -100,58 +91,24 @@ module org.spongepowered.mixin {
     exports org.spongepowered.asm.obfuscation.mapping.common;
     exports org.spongepowered.asm.obfuscation.mapping.mcp;
     exports org.spongepowered.asm.service;
-    exports org.spongepowered.asm.service.modlauncher;
     exports org.spongepowered.asm.util;
     exports org.spongepowered.asm.util.asm;
     exports org.spongepowered.asm.util.perf;
     exports org.spongepowered.tools.agent;
-    exports org.spongepowered.tools.obfuscation;
-    exports org.spongepowered.tools.obfuscation.ext;
-    exports org.spongepowered.tools.obfuscation.fg3;
-    exports org.spongepowered.tools.obfuscation.interfaces;
-    exports org.spongepowered.tools.obfuscation.mapping;
-    exports org.spongepowered.tools.obfuscation.mapping.common;
-    exports org.spongepowered.tools.obfuscation.mapping.fg3;
-    exports org.spongepowered.tools.obfuscation.mapping.mcp;
-    exports org.spongepowered.tools.obfuscation.mcp;
-    exports org.spongepowered.tools.obfuscation.mirror;
-    exports org.spongepowered.tools.obfuscation.service;
-    
-    opens org.spongepowered.asm.mixin.transformer
-        to com.google.gson, gson;
-    
+
+    // MixinExtras compatibility (MixinExtras uses a lot of reflection)
+    opens org.spongepowered.asm.mixin.injection to mixinextras.common;
+    opens org.spongepowered.asm.mixin.injection.struct to mixinextras.common;
+    opens org.spongepowered.asm.mixin.transformer to com.google.gson, mixinextras.common;
+    opens org.spongepowered.asm.mixin.transformer.ext to mixinextras.common;
+    opens org.spongepowered.asm.mixin.transformer.ext.extensions to mixinextras.common;
+
     //
     // Service wiring
     //
     uses org.spongepowered.asm.service.IMixinServiceBootstrap;
-    provides org.spongepowered.asm.service.IMixinServiceBootstrap
-        with org.spongepowered.asm.service.modlauncher.MixinServiceModLauncherBootstrap;
-
     uses org.spongepowered.asm.service.IMixinService;
-    provides org.spongepowered.asm.service.IMixinService
-        with org.spongepowered.asm.service.modlauncher.MixinServiceModLauncher;
-
     uses org.spongepowered.asm.service.IGlobalPropertyService;
-    provides org.spongepowered.asm.service.IGlobalPropertyService
-        with org.spongepowered.asm.service.modlauncher.Blackboard;
-
-    uses cpw.mods.modlauncher.api.ITransformationService;
-    provides cpw.mods.modlauncher.api.ITransformationService
-        with org.spongepowered.asm.launch.MixinTransformationService;
-
-    uses cpw.mods.modlauncher.serviceapi.ILaunchPluginService;
-    provides cpw.mods.modlauncher.serviceapi.ILaunchPluginService
-        with org.spongepowered.asm.launch.MixinLaunchPlugin;
-    
     uses javax.annotation.processing.Processor;
-    provides javax.annotation.processing.Processor
-        with org.spongepowered.tools.obfuscation.MixinObfuscationProcessorInjection,
-             org.spongepowered.tools.obfuscation.MixinObfuscationProcessorTargets;
-
-    uses org.spongepowered.tools.obfuscation.service.IObfuscationService;
-    provides org.spongepowered.tools.obfuscation.service.IObfuscationService
-        with org.spongepowered.tools.obfuscation.mcp.ObfuscationServiceMCP,
-             org.spongepowered.tools.obfuscation.fg3.ObfuscationServiceFG3;
-			 
-    uses org.spongepowered.include.com.google.common.base.PatternCompiler;
+    //uses com.google.common.base.PatternCompiler;
 }
