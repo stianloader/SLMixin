@@ -38,7 +38,7 @@ version of sponge's upstream repository. `V` is this project's breaking change c
 incremented for every breaking change.
 
 Versions in the repository meanwhile will follow the following scheme:
-`A.B.C-X.Y.Z-V-JJJJMMDD.I`
+`A.B.C-X.Y.Z-V-aJJJJMMDD.I`
 
 While the `.I` part is omitted for the first build of each day, it is a 0-indexed number
 represeting that is appended whenever collisions would otherwise occur. The number makes

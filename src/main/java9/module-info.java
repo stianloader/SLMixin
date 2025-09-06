@@ -44,7 +44,7 @@ module org.spongepowered.mixin {
     // Modules we require for compilation but don't necessarily need at runtime
     //
     requires static org.apache.logging.log4j.core;
-    requires static transitive org.apache.logging.log4j;
+    requires static org.apache.logging.log4j;
 
     //
     // Automatic modules we depend on, using static to avoid the forward compatibility mess
