@@ -35,7 +35,7 @@ Versions for testing will follow the following versioning scheme:
 Where as `A`, `B`, `C` are the major, minor and patch numbers for the version of fabric's mixins
 this project is following. Similarly, `X`, `Y`, and `Z` compose the version number of the mixin
 version of sponge's upstream repository. `V` is this project's breaking change counter. It is
-incremented for every breaking change.
+incremented for every breaking change performed by the stianloader organisation.
 
 Versions in the repository meanwhile will follow the following scheme:
 `A.B.C-X.Y.Z-V-aJJJJMMDD.I`
