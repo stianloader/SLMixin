@@ -46,16 +46,10 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodNode;
-import org.spongepowered.asm.mixin.Implements;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.Surrogate;
@@ -108,7 +102,12 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         /**
          * Type proxy
          */
-        PROXY
+        PROXY,
+
+        /**
+         * Enum extension mixin
+         */
+        ENUM_EXTENSION
         
     }
     
@@ -175,10 +174,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             return MixinInfo.this;
         }
         
-        public List<FieldNode> getFields() {
-            return new ArrayList<FieldNode>(this.fields);
-        }
-        
         @Override
         public MethodVisitor visitMethod(final int access, final String name, final String desc, final String signature, final String[] exceptions) {
             MethodNode method = new MixinMethodNode(access, name, desc, signature, exceptions);
@@ -224,14 +219,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          * Interfaces soft-implemented using {@link Implements}
          */
         protected final List<InterfaceInfo> softImplements = new ArrayList<InterfaceInfo>();
-
-        /**
-         * Synthetic inner classes
-         */
-        protected final Set<String> syntheticInnerClasses = new HashSet<String>();
         
         /**
-         * Non-synthetic inner classes
+         * Inner classes
          */
         protected final Set<String> innerClasses = new HashSet<String>();
         
@@ -284,10 +274,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
         List<? extends InterfaceInfo> getSoftImplements() {
             return this.softImplements;
-        }
-        
-        Set<String> getSyntheticInnerClasses() {
-            return this.syntheticInnerClasses;
         }
         
         Set<String> getInnerClasses() {
@@ -420,20 +406,13 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
 
         /**
-         * Read inner class definitions for the class and locate any synthetic
-         * inner classes so that we can add them to the passthrough set in our
-         * parent config.
+         * Read inner class definitions for the class and locate any of our inner classes.
          */
         void readInnerClasses() {
             for (InnerClassNode inner : this.validationClassNode.innerClasses) {
                 if ((inner.outerName != null && inner.outerName.equals(this.classInfo.getName()))
                         || inner.name.startsWith(this.validationClassNode.name + "$")) {
-                    boolean isStatic = (inner.access & Opcodes.ACC_STATIC) != 0;
-                    boolean isSynthetic = (inner.access & Opcodes.ACC_SYNTHETIC) != 0;
-
-                    if (isStatic && isSynthetic) {
-                        this.syntheticInnerClasses.add(inner.name);
-                    } else if (!ClassInfo.isMixin(inner.name)) {
+                    if (!ClassInfo.isMixin(inner.name)) {
                         this.innerClasses.add(inner.name);
                     }
                 }
@@ -466,7 +445,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          */
         @Override
         protected void validateChanges(SubType type, List<ClassInfo> targetClasses) {
-            if (!this.syntheticInnerClasses.equals(this.previous.syntheticInnerClasses)) {
+            if (!this.innerClasses.equals(this.previous.innerClasses)) {
                 throw new MixinReloadException(MixinInfo.this, "Cannot change inner classes");
             }
             if (!this.interfaces.equals(this.previous.interfaces)) {
@@ -559,6 +538,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         abstract void validate(State state, List<ClassInfo> targetClasses);
 
         abstract MixinPreProcessorStandard createPreProcessor(MixinClassNode classNode);
+
+        void validateInnerClass(ClassNode innerClass) {
+        }
 
         /**
          * A standard mixin
@@ -681,6 +663,42 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             }
         }
 
+        static class EnumExtension extends SubType {
+
+            EnumExtension(MixinInfo info) {
+                super(info, "@Mixin", false);
+            }
+
+            @Override
+            void validateTarget(String targetName, ClassInfo targetInfo) {
+                if (!targetInfo.isEnum()) {
+                    throw new InvalidMixinException(this.mixin, this.annotationType + " target type mismatch: "
+                            + targetName + " is not an enum in " + this);
+                }
+
+                MixinService.getService().getFeatureValidator().validateEnumExtension(this.mixin, targetInfo);
+            }
+
+            @Override
+            void validate(State state, List<ClassInfo> targetClasses) {
+                if (FabricUtil.getCompatibility(this.mixin.getConfig()) < FabricUtil.COMPATIBILITY_0_17_1) {
+                    String advice = MixinService.getService().getAdviceProvider().higherCompatibilityNeeded(FabricUtil.COMPATIBILITY_0_17_1, "0.17.1");
+                    throw new InvalidMixinException(this.mixin, "Enum extensions are not supported at the current compatibility version. " + advice);
+                }
+                EnumExtensionUtils.checkForGotchas(this.mixin, state.getValidationClassNode());
+            }
+
+            @Override
+            MixinPreProcessorStandard createPreProcessor(MixinClassNode classNode) {
+                return new MixinPreProcessorEnumExtension(this.mixin, classNode);
+            }
+
+            @Override
+            void validateInnerClass(ClassNode innerClass) {
+                EnumExtensionUtils.checkForGotchas(this.mixin, innerClass);
+            }
+        }
+
         static SubType getTypeFor(MixinInfo mixin) {
             Variant variant = MixinInfo.getVariant(mixin.getClassInfo());
             switch (variant) {
@@ -690,6 +708,8 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                     return new SubType.Interface(mixin);
                 case ACCESSOR:
                     return new SubType.Accessor(mixin);
+                case ENUM_EXTENSION:
+                    return new EnumExtension(mixin);
                 default:
                     throw new IllegalStateException("Unsupported Mixin variant " + variant + " for " + mixin);
             }
@@ -917,6 +937,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         } finally {
             this.pendingState = null;
         }
+    }
+
+    void validateInnerClass(ClassNode innerClass) {
+        this.type.validateInnerClass(innerClass);
     }
 
     /**
@@ -1237,16 +1261,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     List<InterfaceInfo> getSoftImplements() {
         return Collections.<InterfaceInfo>unmodifiableList(this.getState().getSoftImplements());
     }
-
-    /**
-     * Get the synthetic inner classes for this mixin
-     */
-    Set<String> getSyntheticInnerClasses() {
-        return Collections.<String>unmodifiableSet(this.getState().getSyntheticInnerClasses());
-    }
     
     /**
-     * Get the user-defined inner classes for this mixin
+     * Get the inner classes for this mixin
      */
     Set<String> getInnerClasses() {
         return Collections.<String>unmodifiableSet(this.getState().getInnerClasses());
@@ -1398,7 +1415,11 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 //        if (ProxyInfo.isProxy(classInfo)) {
 //            return Variant.PROXY;
 //        }
-        
+
+        if (classInfo.isEnum()) {
+            return Variant.ENUM_EXTENSION;
+        }
+
         if (!classInfo.isInterface()) {
             return Variant.STANDARD;
         }
