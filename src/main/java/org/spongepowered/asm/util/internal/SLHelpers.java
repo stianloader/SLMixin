@@ -8,6 +8,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class SLHelpers {
+    private SLHelpers() {
+        throw new UnsupportedOperationException();
+    }
+
     @NotNull
     public static final <K, V> BiFunction<K, @Nullable ? super List<V>, @NotNull ? extends List<V>> mapListMergeFunction(V value) {
         return (key, collection) -> {

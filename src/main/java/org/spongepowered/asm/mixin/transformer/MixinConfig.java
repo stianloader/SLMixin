@@ -793,7 +793,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     void onSelect() {
         this.plugin = new PluginHandle(this, this.service, this.pluginClassName);
-        this.plugin.onLoad(this.mixinPackage == null ? "": this.mixinPackage);
+        this.plugin.onLoad(this.mixinPackage == null ? "" : this.mixinPackage);
 
         if (this.mixinPackage == null || this.mixinPackage.isEmpty()) {
             return;

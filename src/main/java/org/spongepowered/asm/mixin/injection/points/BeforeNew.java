@@ -110,7 +110,7 @@ public class BeforeNew extends InjectionPoint {
         this.ordinal = data.getOrdinal();
         String target = data.get("class", data.get("target", "")).replace('.', '/');
 
-        if(target.isEmpty()) {
+        if (target.isEmpty()) {
             target = null;
         }
 

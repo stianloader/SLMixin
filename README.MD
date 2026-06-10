@@ -62,3 +62,5 @@ used outside minecraft or could easily be replaced.
 - The module-info.class file is now compiled with Java 9, instead of Java 16.
 - Integrated the agent module in the core module.
 - Compiling against ASM 9.8 by default, instead of the previous 9.0
+- Removed guava dependency
+

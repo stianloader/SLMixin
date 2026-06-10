@@ -6,6 +6,10 @@ import org.jetbrains.annotations.Nullable;
 
 @ApiStatus.Internal
 public class SLNumberParser {
+    private SLNumberParser() {
+        throw new UnsupportedOperationException();
+    }
+
     @Nullable
     @Contract(pure = true)
     public static Double parseDouble(String str) {

@@ -9,6 +9,10 @@ import org.jetbrains.annotations.NotNull;
 
 @ApiStatus.Internal
 public class SLArrayUtils {
+    private SLArrayUtils() {
+        throw new UnsupportedOperationException();
+    }
+
     @Contract(pure = true)
     public static int @NotNull[] concat(int @NotNull[] argA, int @NotNull[] argB) {
         int[] combined = new int[argA.length + argB.length];
