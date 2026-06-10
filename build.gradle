@@ -303,3 +303,4 @@ if (providers.gradleProperty('signedPublish').isPresent() && Boolean.parseBoolea
 }
 
 publish.dependsOn(build)
+tasks.publishToMavenLocal.dependsOn(tasks.check)

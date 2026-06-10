@@ -63,4 +63,3 @@ used outside minecraft or could easily be replaced.
 - Integrated the agent module in the core module.
 - Compiling against ASM 9.8 by default, instead of the previous 9.0
 - Removed guava dependency
-
