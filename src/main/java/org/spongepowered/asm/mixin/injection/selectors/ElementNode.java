@@ -41,8 +41,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.util.Handles;
 
-import com.google.common.base.Strings;
-
 /**
  * Wrapper for all node types supported by {@link ITargetSelector target
  * selectors} ({@link FieldNode}, {@link MethodNode}, {@link FieldInsnNode},
@@ -600,15 +598,27 @@ public abstract class ElementNode<TNode> {
     
     @Override
     public String toString() {
-        String desc = Strings.nullToEmpty(this.getDesc());
-        if (!desc.isEmpty() && this.isField()) {
-            desc = ":" + desc;
-        }
-        String owner = Strings.nullToEmpty(this.getOwner());
-        if (!owner.isEmpty()) {
+        String owner = this.getOwner();
+        String name = this.getName();
+        String desc = this.getDesc();
+
+        if (owner == null) {
+            owner = "";
+        } else if (!owner.isEmpty()) {
             owner = "L" + owner + ";";
         }
-        return String.format("%s%s%s", owner, Strings.nullToEmpty(this.getName()), desc);
+
+        if (name == null) {
+            name = "";
+        }
+
+        if (desc == null) {
+            desc = "";
+        } else if (!desc.isEmpty() && this.isField()) {
+            desc = ":" + desc;
+        }
+
+        return String.format("%s%s%s", owner, name, desc);
     }
 
     /**

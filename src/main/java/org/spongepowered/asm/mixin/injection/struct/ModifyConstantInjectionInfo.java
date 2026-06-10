@@ -39,8 +39,6 @@ import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.HandlerPrefix;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.InjectorOrder;
 import org.spongepowered.asm.mixin.transformer.MixinTargetContext;
 
-import com.google.common.base.Strings;
-
 /**
  * Information about a constant modifier injector
  */
@@ -86,7 +84,7 @@ public class ModifyConstantInjectionInfo extends InjectionInfo {
     
     @Override
     public String getSliceId(String id) {
-        return Strings.nullToEmpty(id);
+        return id == null ? "" : id;
     }
 
 }

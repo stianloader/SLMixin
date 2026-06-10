@@ -26,12 +26,15 @@ package org.spongepowered.asm.util;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -43,10 +46,6 @@ import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
-
-import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 
 /**
  * Utility class for working with ASM annotations
@@ -60,8 +59,8 @@ public final class Annotations {
         
         private final AnnotationNode annotation;
         
-        Handle(AnnotationNode annotation) {
-            Preconditions.checkNotNull(annotation, "annotation");
+        Handle(@NotNull AnnotationNode annotation) {
+            Objects.requireNonNull(annotation, "annotation");
             this.annotation = annotation;
         }
         
@@ -472,16 +471,13 @@ public final class Annotations {
                 nodes.add(annotation);
             }
         }
-        
+
         int foundNodes = nodes.size();
+
         if (foundNodes > 1) {
-            throw new IllegalArgumentException("Conflicting annotations found: " + Lists.transform(nodes, new Function<AnnotationNode, String>() {
-                @Override public String apply(AnnotationNode input) {
-                    return input.desc;
-                }
-            }));
+            throw new IllegalArgumentException("Conflicting annotations found: " + Arrays.toString(nodes.stream().map((an) -> an.desc).toArray(String[]::new)));
         }
-    
+
         return foundNodes == 0 ? null : nodes.get(0);
     }
 
@@ -528,7 +524,7 @@ public final class Annotations {
      */
     @SuppressWarnings("unchecked")
     public static <T> T getValue(AnnotationNode annotation, String key, Class<?> annotationClass) {
-        Preconditions.checkNotNull(annotationClass, "annotationClass cannot be null");
+        Objects.requireNonNull(annotationClass, "annotationClass cannot be null");
         T value = Annotations.getValue(annotation, key);
         if (value == null) {
             try {

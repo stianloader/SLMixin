@@ -27,14 +27,12 @@ package org.spongepowered.asm.mixin.transformer;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.launch.MixinInitialisationError;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigSource;
 import org.spongepowered.asm.service.MixinService;
-
-import com.google.common.base.Strings;
 
 /**
  * Handle for marshalling mixin configs outside of the transformer package
@@ -173,7 +171,7 @@ public class Config {
         }
 
         String parent = config.get().getParentName();
-        if (!Strings.isNullOrEmpty(parent)) {
+        if (parent != null && !parent.isEmpty()) {
             Config parentConfig;
             try {
                 parentConfig = Config.create(parent, outer, source);

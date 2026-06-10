@@ -24,6 +24,9 @@
  */
 package org.spongepowered.asm.mixin.injection.struct;
 
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
@@ -45,9 +48,6 @@ import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.Quantifier;
 import org.spongepowered.asm.util.SignaturePrinter;
 import org.spongepowered.asm.util.asm.ASM;
-
-import com.google.common.base.Objects;
-import com.google.common.base.Strings;
 
 /**
  * <p>Struct which defines an <b>Explcit Target selector</b>,  See
@@ -255,6 +255,7 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
     /**
      * The actual String value passed into the {@link #parse} method 
      */
+    @Nullable
     private final String tail;
     
     /**
@@ -415,7 +416,7 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
     
     @Override
     public ITargetSelector next() {
-        return Strings.isNullOrEmpty(this.tail) ? null : MemberInfo.parse(this.tail, null);
+        return (this.tail == null || this.tail.isEmpty()) ? null : MemberInfo.parse(this.tail, null);
     }
     
     @Override
@@ -751,9 +752,9 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
                 : other instanceof ITargetSelectorRemappable ? ((ITargetSelectorRemappable)other).isField() : false;
         
         return this.compareMatches(other) && this.forceField == otherForceField
-                && Objects.equal(this.owner, other.getOwner())
-                && Objects.equal(this.name, other.getName())
-                && Objects.equal(this.desc, other.getDesc());
+                && Objects.equals(this.owner, other.getOwner())
+                && Objects.equals(this.name, other.getName())
+                && Objects.equals(this.desc, other.getDesc());
     }
     
     /**
@@ -771,7 +772,7 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
      */
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.matches, this.owner, this.name, this.desc);
+        return Objects.hash(this.matches, this.owner, this.name, this.desc);
     }
     
     /* (non-Javadoc)
@@ -793,11 +794,11 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
                 }
                 break;
             case MOVE:
-                return this.move(Strings.emptyToNull(args[0]));
+                return this.move(args[0].isEmpty() ? null : args[0]);
             case ORPHAN:
                 return this.move(null);
             case TRANSFORM:
-                return this.transform(Strings.emptyToNull(args[0]));
+                return this.transform(args[0].isEmpty() ? null : args[0]);
             case PERMISSIVE:
                 return this.transform(null);
             case CLEAR_LIMITS:
@@ -871,7 +872,7 @@ public final class MemberInfo implements ITargetSelectorRemappable, ITargetSelec
     public static MemberInfo parse(final String input, final ISelectorContext context) {
         String desc = null;
         String owner = null;
-        String name = Strings.nullToEmpty(input).replaceAll("\\s", "");
+        String name = input == null ? "" : input.replaceAll("\\s", "");
         String tail = null;
         
         int arrowPos = name.indexOf(MemberInfo.ARROW);

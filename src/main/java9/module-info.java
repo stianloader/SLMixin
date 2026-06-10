@@ -45,12 +45,12 @@ module org.spongepowered.mixin {
     //
     requires static org.apache.logging.log4j.core;
     requires static org.apache.logging.log4j;
+    requires static org.jetbrains.annotations;
 
     //
     // Automatic modules we depend on, using static to avoid the forward compatibility mess
     //
     // requires static jopt.simple;
-    requires com.google.common; // (guava)
     requires com.google.gson;
 
     // Gson's module dependencies
@@ -109,6 +109,4 @@ module org.spongepowered.mixin {
     uses org.spongepowered.asm.service.IMixinServiceBootstrap;
     uses org.spongepowered.asm.service.IMixinService;
     uses org.spongepowered.asm.service.IGlobalPropertyService;
-    uses javax.annotation.processing.Processor;
-    //uses com.google.common.base.PatternCompiler;
 }

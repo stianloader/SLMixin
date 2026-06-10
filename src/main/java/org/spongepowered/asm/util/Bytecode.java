@@ -27,29 +27,48 @@ package org.spongepowered.asm.util;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import com.google.common.collect.Iterators;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.InnerClassNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeAnnotationNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.util.Printer;
 import org.objectweb.asm.util.TraceClassVisitor;
 import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.asm.MarkerNode;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
 import org.spongepowered.asm.util.throwables.SyntheticBridgeException;
 import org.spongepowered.asm.util.throwables.SyntheticBridgeException.Problem;
-
-import com.google.common.base.Joiner;
-import com.google.common.primitives.Ints;
 
 /**
  * Utility methods for working with bytecode via ASM
@@ -863,7 +882,7 @@ public final class Bytecode {
      * @return method descriptor without return type
      */
     public static String getDescriptor(Type... args) {
-        return "(" + Joiner.on("").join(args) + ")";
+        return "(" + String.join("", Arrays.asList(args).stream().map(Objects::toString).toArray(String[]::new)) + ")";
     }
     
     /**
@@ -925,7 +944,8 @@ public final class Bytecode {
         if (insn == null) {
             return false;
         }
-        return Ints.contains(Bytecode.CONSTANTS_ALL, insn.getOpcode());
+
+        return SLArrayUtils.contains(Bytecode.CONSTANTS_ALL, insn.getOpcode());
     }
 
     /**
@@ -953,8 +973,8 @@ public final class Bytecode {
             }
             return Type.getObjectType(((TypeInsnNode)insn).desc);
         }
-        
-        int index = Ints.indexOf(Bytecode.CONSTANTS_ALL, insn.getOpcode());
+
+        int index = SLArrayUtils.indexOf(Bytecode.CONSTANTS_ALL, insn.getOpcode());
         return index < 0 ? null : Bytecode.CONSTANTS_VALUES[index];
     }
 
@@ -991,7 +1011,7 @@ public final class Bytecode {
             return Type.getType(Constants.CLASS_DESC);
         }
         
-        int index = Ints.indexOf(Bytecode.CONSTANTS_ALL, insn.getOpcode());
+        int index = SLArrayUtils.indexOf(Bytecode.CONSTANTS_ALL, insn.getOpcode());
         return index < 0 ? null : Type.getType(Bytecode.CONSTANTS_TYPES[index]);
     }
     
@@ -1250,9 +1270,24 @@ public final class Bytecode {
      * @param b Incoming method
      */
     public static void compareBridgeMethods(MethodNode a, MethodNode b) {
-        Iterator<AbstractInsnNode> ia = Iterators.filter(a.instructions.iterator(), Bytecode::isRealInsn);
-        Iterator<AbstractInsnNode> ib = Iterators.filter(b.instructions.iterator(), Bytecode::isRealInsn);
-        
+        List<AbstractInsnNode> insnsA = new ArrayList<AbstractInsnNode>();
+        List<AbstractInsnNode> insnsB = new ArrayList<AbstractInsnNode>();
+
+        for (AbstractInsnNode insn : (Iterable<AbstractInsnNode>) () -> a.instructions.iterator()) {
+            if (Bytecode.isRealInsn(insn)) {
+                insnsA.add(insn);
+            }
+        }
+
+        for (AbstractInsnNode insn : (Iterable<AbstractInsnNode>) () -> b.instructions.iterator()) {
+            if (Bytecode.isRealInsn(insn)) {
+                insnsB.add(insn);
+            }
+        }
+
+        Iterator<AbstractInsnNode> ia = Collections.unmodifiableList(insnsA).iterator();
+        Iterator<AbstractInsnNode> ib = Collections.unmodifiableList(insnsB).iterator();
+
         int index = 0;
         for (; ia.hasNext() && ib.hasNext(); index++) {
             AbstractInsnNode na = ia.next();

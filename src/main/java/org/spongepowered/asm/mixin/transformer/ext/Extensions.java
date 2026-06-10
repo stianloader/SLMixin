@@ -34,9 +34,6 @@ import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.service.ISyntheticClassRegistry;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-
 /**
  * Mixin transformer extensions and common modules such as class generators
  */
@@ -135,15 +132,15 @@ public final class Extensions implements IExtensionRegistry {
      * @param environment current environment
      */
     public void select(MixinEnvironment environment) {
-        Builder<IExtension> activeExtensions = ImmutableList.<IExtension>builder();
+        List<IExtension> activeExtensions = new ArrayList<IExtension>();
 
         for (IExtension extension : this.extensions) {
             if (extension.checkActive(environment)) {
                 activeExtensions.add(extension);
             }
         }
-        
-        this.activeExtensions = activeExtensions.build();
+
+        this.activeExtensions = Collections.unmodifiableList(activeExtensions);
     }
 
     /**

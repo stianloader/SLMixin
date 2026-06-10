@@ -28,13 +28,19 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
@@ -47,11 +53,7 @@ import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.PrettyPrinter;
 import org.spongepowered.asm.util.SignaturePrinter;
-
-import com.google.common.base.Charsets;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.io.Files;
+import org.spongepowered.asm.util.internal.SLHelpers;
 
 /**
  * Checks whether interfaces declared on mixin target classes are actually fully
@@ -80,8 +82,8 @@ public class ExtensionCheckInterfaces implements IExtension {
      * Methods from interfaces that are already in the class before mixins are
      * applied.
      */
-    private final Multimap<ClassInfo, Method> interfaceMethods = HashMultimap.create();
-    
+    private final Map<ClassInfo, List<Method>> interfaceMethods = new HashMap<ClassInfo, List<Method>>();
+
     /**
      * Strict mode 
      */
@@ -112,14 +114,14 @@ public class ExtensionCheckInterfaces implements IExtension {
         this.csv.getParentFile().mkdirs();
 
         try {
-            Files.write("Class,Method,Signature,Interface\n", this.csv, Charsets.ISO_8859_1);
+            Files.write(this.csv.toPath(), ("Class,Method,Signature,Interface\n").getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         } catch (IOException ex) {
             // well this sucks
         }
 
         try {
             String dateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-            Files.write("Mixin Implementation Report generated on " + dateTime + "\n", this.report, Charsets.ISO_8859_1);
+            Files.write(this.report.toPath(), ("Mixin Implementation Report generated on " + dateTime + "\n").getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         } catch (IOException ex) {
             // hmm :(
         }
@@ -143,7 +145,7 @@ public class ExtensionCheckInterfaces implements IExtension {
     public void preApply(ITargetClassContext context) {
         ClassInfo targetClassInfo = context.getClassInfo();
         for (Method m : targetClassInfo.getInterfaceMethods(false)) {
-            this.interfaceMethods.put(targetClassInfo, m);
+            this.interfaceMethods.compute(targetClassInfo, SLHelpers.mapListMergeFunction(m));
         }
     }
 
@@ -172,7 +174,7 @@ public class ExtensionCheckInterfaces implements IExtension {
 
         Set<Method> interfaceMethods = targetClassInfo.getInterfaceMethods(true);
         Set<Method> implementedMethods = new HashSet<Method>(targetClassInfo.getSuperClass().getInterfaceMethods(true));
-        implementedMethods.addAll(this.interfaceMethods.removeAll(targetClassInfo));
+        implementedMethods.addAll(this.interfaceMethods.remove(targetClassInfo));
 
         for (Method method : interfaceMethods) {
             Method found = targetClassInfo.findMethodInHierarchy(method.getName(), method.getDesc(), SearchType.ALL_CLASSES, Traversal.ALL);
@@ -218,7 +220,7 @@ public class ExtensionCheckInterfaces implements IExtension {
 
     private void appendToCSVReport(String className, Method method, String iface) {
         try {
-            Files.append(String.format("%s,%s,%s,%s\n", className, method.getName(), method.getDesc(), iface), this.csv, Charsets.ISO_8859_1);
+            Files.write(this.csv.toPath(), String.format("%s,%s,%s,%s\n", className, method.getName(), method.getDesc(), iface).getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.APPEND, StandardOpenOption.WRITE);
         } catch (IOException ex) {
             // Not the end of the world
         }

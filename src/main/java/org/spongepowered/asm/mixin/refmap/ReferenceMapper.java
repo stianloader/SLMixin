@@ -24,6 +24,7 @@
  */
 package org.spongepowered.asm.mixin.refmap;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -37,8 +38,6 @@ import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.logging.MessageRouter;
 
-import com.google.common.collect.Maps;
-import com.google.common.io.Closeables;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
@@ -72,13 +71,13 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
      * by the AP. Each entry is keyed by the owning mixin, with the value map
      * containing the actual remappings for each owner
      */
-    private final Map<String, Map<String, String>> mappings = Maps.newTreeMap();
+    private final Map<String, Map<String, String>> mappings = new TreeMap<String, Map<String,String>>();
     
     /**
      * All mapping sets, keyed by environment type, eg. "notch", "searge". The
      * format of each map within this map is the same as for {@link #mappings}
      */
-    private final Map<String, Map<String, Map<String, String>>> data = Maps.newTreeMap();
+    private final Map<String, Map<String, Map<String, String>>> data = new TreeMap<String, Map<String,Map<String,String>>>();
     
     /**
      * True if this refmap cannot be written. Only true for the
@@ -225,7 +224,7 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
         if (context != null) {
             mappings = this.data.get(context);
             if (mappings == null) {
-                mappings = Maps.newTreeMap();
+                mappings = new TreeMap<String, Map<String,String>>();
                 this.data.put(context, mappings);
             }
         }
@@ -254,6 +253,7 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
      */
     public static ReferenceMapper read(String resourcePath) {
         Reader reader = null;
+
         try {
             IMixinService service = MixinService.getService();
             InputStream resource = service.getResourceAsStream(resourcePath);
@@ -270,9 +270,15 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
             MessageRouter.getMessager().printMessage(Kind.ERROR, String.format("Failed reading REFMAP JSON from %s: %s %s",
                     resourcePath, ex.getClass().getName(), ex.getMessage()));
         } finally {
-            Closeables.closeQuietly(reader);
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException ignored) {
+                    // ignored
+                }
+            }
         }
-        
+
         return ReferenceMapper.DEFAULT_MAPPER;
     }
     

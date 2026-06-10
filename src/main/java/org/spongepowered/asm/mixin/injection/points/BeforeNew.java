@@ -43,8 +43,6 @@ import org.spongepowered.asm.mixin.injection.struct.InjectionPointData;
 import org.spongepowered.asm.mixin.injection.throwables.InvalidInjectionPointException;
 import org.spongepowered.asm.util.Constants;
 
-import com.google.common.base.Strings;
-
 /**
  * <p>This injection point searches for NEW opcodes matching its arguments and
  * returns a list of insns immediately prior to matching instructions. It
@@ -110,7 +108,12 @@ public class BeforeNew extends InjectionPoint {
         super(data);
         
         this.ordinal = data.getOrdinal();
-        String target = Strings.emptyToNull(data.get("class", data.get("target", "")).replace('.', '/'));
+        String target = data.get("class", data.get("target", "")).replace('.', '/');
+
+        if(target.isEmpty()) {
+            target = null;
+        }
+
         ITargetSelector member = TargetSelector.parseAndValidate(target, data.getContext());
         if (!(member instanceof ITargetSelectorConstructor)) {
             throw new InvalidInjectionPointException(data.getMixin(), "Failed parsing @At(\"NEW\") target descriptor \"%s\" on %s",

@@ -27,10 +27,12 @@ package org.spongepowered.asm.mixin.transformer;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.spongepowered.asm.logging.Level;
@@ -69,10 +71,6 @@ import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
-
-import com.google.common.base.Functions;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 
 /**
  * Runtime information bundle about a mixin
@@ -915,7 +913,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     void parseTargets() {
         try {
             this.targetClasses.addAll(this.readTargetClasses(this.declaredTargets));
-            this.targetClassNames.addAll(Lists.transform(this.targetClasses, Functions.toStringFunction()));
+            this.targetClasses.stream().map(Objects::toString).forEachOrdered(this.targetClassNames::add);
         } catch (InvalidMixinException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -990,15 +988,20 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * @return target list
      */
     private Iterable<Object> readTargets(AnnotationNode mixin) {
-        Iterable<Object> publicTargets = Annotations.getValue(mixin, "value");
-        Iterable<Object> privateTargets = Annotations.getValue(mixin, "targets");
-        if (publicTargets == null && privateTargets == null) {
-            return Collections.<Object>emptyList();
-        }
+        List<Object> publicTargets = Annotations.getValue(mixin, "value");
+        List<Object> privateTargets = Annotations.getValue(mixin, "targets");
+
         if (publicTargets == null) {
-            return privateTargets;
+            return privateTargets == null ? Collections.emptyList() : privateTargets;
+        } else if (privateTargets == null) {
+            return publicTargets;
+        } else {
+            List<Object> concat = new ArrayList<Object>();
+            concat.addAll(publicTargets);
+            concat.addAll(privateTargets);
+
+            return concat;
         }
-        return privateTargets == null ? publicTargets : Iterables.concat(publicTargets, privateTargets);
     }
 
     /**
@@ -1244,7 +1247,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * Get the target class names as declared for this mixin
      */
     List<String> getDeclaredTargetClasses() {
-        return Collections.<String>unmodifiableList(Lists.transform(this.declaredTargets, Functions.toStringFunction()));
+        return Collections.unmodifiableList(Arrays.asList(this.declaredTargets.stream().map(Objects::toString).toArray(String[]::new)));
     }
 
     /**

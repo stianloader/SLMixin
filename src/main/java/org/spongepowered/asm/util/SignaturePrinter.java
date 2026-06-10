@@ -30,8 +30,6 @@ import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorByName;
 
-import com.google.common.base.Strings;
-
 /**
  * Generates callback signature for callback pretty-print
  */
@@ -222,7 +220,7 @@ public class SignaturePrinter {
                 }
             }
             try {
-                String name = typesOnly ? null : var < this.argNames.length && !Strings.isNullOrEmpty(this.argNames[var])
+                String name = typesOnly ? null : var < this.argNames.length && (this.argNames[var] != null && !this.argNames[var].isEmpty())
                         ? this.argNames[var] : "unnamed" + var;
                 this.appendType(sb, this.argTypes[var], name);
             } catch (Exception ex) {
@@ -338,7 +336,13 @@ public class SignaturePrinter {
     }
     
     private static String arraySuffix(Type type) {
-        return Strings.repeat("[]", type.getDimensions());
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < type.getDimensions(); i++) {
+            sb.append("[]");
+        }
+
+        return sb.toString();
     }
     
     private static StringBuilder appendArraySuffix(StringBuilder sb, Type type) {

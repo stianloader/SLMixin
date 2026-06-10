@@ -24,6 +24,7 @@
  */
 package org.spongepowered.asm.mixin.injection.struct;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -53,10 +55,7 @@ import org.spongepowered.asm.util.Annotations.Handle;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.IMessageSink;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
-
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-import com.google.common.primitives.Ints;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
 
 /**
  * Data read from an {@link org.spongepowered.asm.mixin.injection.At} annotation
@@ -134,7 +133,7 @@ public class InjectionPointData {
         this.context = context;
         this.at = at;
         this.target = target;
-        this.slice = Strings.nullToEmpty(slice);
+        this.slice = slice == null ? "" : slice;
         this.ordinal = Math.max(-1, ordinal);
         this.opcode = opcode;
         this.id = id;
@@ -321,7 +320,7 @@ public class InjectionPointData {
      */
     public ITargetSelector getTarget() {
         try {
-            if (Strings.isNullOrEmpty(this.target)) {
+            if (this.target == null || this.target.isEmpty()) {
                 IAnnotationHandle selectorAnnotation = this.context.getSelectorAnnotation();
                 AnnotationNode desc = Annotations.<AnnotationNode>getValue(((Handle)selectorAnnotation).getNode(), "desc");
                 if (desc != null) {
@@ -415,7 +414,7 @@ public class InjectionPointData {
             }                
         }
         
-        return Ints.toArray(parsed);
+        return SLArrayUtils.toIntArray(parsed);
     }
 
     /**
@@ -438,7 +437,7 @@ public class InjectionPointData {
     }
 
     private static Pattern createPattern() {
-        return Pattern.compile(String.format("^(.+?)(:(%s))?$", Joiner.on('|').join(Specifier.values())));
+        return Pattern.compile(String.format("^(.+?)(:(%s))?$", String.join("|", Arrays.asList(Specifier.values()).stream().map(Object::toString).toArray(String[]::new))));
     }
 
     /**

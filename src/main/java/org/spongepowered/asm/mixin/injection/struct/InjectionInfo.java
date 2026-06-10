@@ -31,6 +31,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,8 +48,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
-import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.extensibility.IActivityContext.IActivity;
+import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.code.ISliceContext;
@@ -75,9 +78,6 @@ import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
 import org.spongepowered.asm.util.logging.MessageRouter;
-
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Contructs information about an injection from an {@link Inject} annotation
@@ -640,7 +640,7 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
     }
     
     protected String getMessages() {
-        return this.messages != null ? " Messages: { " + Joiner.on(" ").join(this.messages) + "}" : "";
+        return this.messages != null ? " Messages: { " + String.join(" ", this.messages) + "}" : "";
     }
 
     /**
@@ -749,7 +749,7 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
     }
     
     public static Set<Class<? extends Annotation>> getRegisteredAnnotations() {
-        return ImmutableSet.<Class<? extends Annotation>>copyOf(InjectionInfo.registeredAnnotations);
+        return Collections.unmodifiableSet(new HashSet<Class<? extends Annotation>>(Arrays.asList(InjectionInfo.registeredAnnotations)));
     }
 
 }

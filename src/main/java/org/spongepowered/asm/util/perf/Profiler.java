@@ -26,16 +26,27 @@ package org.spongepowered.asm.util.perf;
 
 import java.lang.reflect.Method;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.PrettyPrinter;
 import org.spongepowered.asm.util.PrettyPrinter.Alignment;
-
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * Performance profiler for Mixin.
@@ -793,7 +804,7 @@ public final class Profiler {
      * @return new profiler section
      */
     public Section begin(int flags, String... path) {
-        return this.begin(flags, Joiner.on('.').join(path));
+        return this.begin(flags, String.join(".", path));
     }
 
     /**
@@ -1013,7 +1024,7 @@ public final class Profiler {
 
         // Collect sections from all profilers into ResultSections
         synchronized (Profiler.profilers) {
-            id = Joiner.on(',').join(Profiler.profilers.values());
+            id = String.join(",", Profiler.profilers.values().stream().map(Objects::toString).toArray(String[]::new));
             allPhases = new LinkedHashSet<String>();
             allSections = new TreeMap<String, Section>() {
 
@@ -1163,12 +1174,14 @@ public final class Profiler {
      * 
      * @return immutable collection of profilers
      */
+    @Unmodifiable
+    @NotNull
     public static Collection<Profiler> getProfilers() {
-        Builder<Profiler> list = ImmutableList.<Profiler>builder();
+        List<Profiler> list = new ArrayList<Profiler>();
         synchronized (Profiler.profilers) {
             list.addAll(Profiler.profilers.values());
         }
-        return list.build();
+        return Collections.unmodifiableList(list);
     }
     
 }

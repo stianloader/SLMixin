@@ -27,6 +27,7 @@ package org.spongepowered.asm.mixin.transformer;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.spongepowered.asm.logging.Level;
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -48,12 +47,14 @@ import org.objectweb.asm.tree.FrameNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.logging.ILogger;
+import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -68,10 +69,6 @@ import org.spongepowered.asm.util.Locals;
 import org.spongepowered.asm.util.asm.ClassNodeAdapter;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
-
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Information about a class, used as a way of keeping track of class hierarchy
@@ -808,10 +805,8 @@ public final class ClassInfo {
         this.outerName = null;
         this.isInner = false;
         this.isProbablyStatic = true;
-        this.initialisers = ImmutableSet.<Method>of(
-            new Method("<init>", "()V")
-        );
-        this.methods = ImmutableSet.<Method>of(
+        this.initialisers = Collections.singleton(new Method("<init>", "()V"));
+        this.methods = Collections.unmodifiableSet(new HashSet<Method>(Arrays.asList(
             new Method("getClass", "()Ljava/lang/Class;"),
             new Method("hashCode", "()I"),
             new Method("equals", "(Ljava/lang/Object;)Z"),
@@ -823,7 +818,7 @@ public final class ClassInfo {
             new Method("wait", "(JI)V"),
             new Method("wait", "()V"),
             new Method("finalize", "()V")
-        );
+        )));
         this.fields = Collections.<Field>emptySet();
         this.isInterface = false;
         this.interfaces = Collections.<String>emptySet();
@@ -1239,7 +1234,7 @@ public final class ClassInfo {
      * simply returns this ClassInfo.
      */
     public ClassInfo resolveNestHost() {
-        if (!Strings.isNullOrEmpty(this.nestHost)) {
+        if (this.nestHost != null && !this.nestHost.isEmpty()) {
             return ClassInfo.forName(this.nestHost);
         }
         return this;
@@ -1256,7 +1251,7 @@ public final class ClassInfo {
             return targets;
         }
 
-        return ImmutableList.<ClassInfo>of(this);
+        return Collections.<ClassInfo>singletonList(this);
     }
 
     /**

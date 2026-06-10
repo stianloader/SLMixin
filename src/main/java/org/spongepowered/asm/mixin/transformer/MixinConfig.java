@@ -27,16 +27,25 @@ package org.spongepowered.asm.mixin.transformer;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Joiner;
-import org.spongepowered.asm.logging.Level;
-import org.spongepowered.asm.logging.ILogger;
-import org.spongepowered.asm.launch.MixinInitialisationError;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
+import org.spongepowered.asm.launch.MixinInitialisationError;
+import org.spongepowered.asm.logging.ILogger;
+import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Feature;
@@ -61,9 +70,6 @@ import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.VersionNumber;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
@@ -458,7 +464,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         this.source = source;
 
         // If parent is specified, don't perform postinit until parent is assigned
-        if (!Strings.isNullOrEmpty(this.parentName)) {
+        if (this.parentName != null && !this.parentName.isEmpty()) {
             return true;
         }
         
@@ -761,7 +767,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
             return true;
         }
 
-        String strMissingFeatures = Joiner.on(", ").join(missingFeatures);
+        String strMissingFeatures = String.join(", ", missingFeatures);
         this.logger.warn("Mixin config {} requires features [{}] which are not available. The mixin config will not be applied.",
                 this.name, strMissingFeatures);
 
@@ -787,9 +793,9 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     void onSelect() {
         this.plugin = new PluginHandle(this, this.service, this.pluginClassName);
-        this.plugin.onLoad(Strings.nullToEmpty(this.mixinPackage));
-        
-        if (Strings.isNullOrEmpty(this.mixinPackage)) {
+        this.plugin.onLoad(this.mixinPackage == null ? "": this.mixinPackage);
+
+        if (this.mixinPackage == null || this.mixinPackage.isEmpty()) {
             return;
         }
 
@@ -911,8 +917,8 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         if (mixinClasses == null) {
             return;
         }
-        
-        if (Strings.isNullOrEmpty(this.mixinPackage)) {
+
+        if (this.mixinPackage == null || !this.mixinPackage.isEmpty()) {
             if (mixinClasses.size() > 0) {
                 this.logger.error("{} declares mixin classes in {} but does not specify a package, {} orphaned mixins will not be loaded: {}",
                         this, collectionName, mixinClasses.size(), mixinClasses);
@@ -1047,7 +1053,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     @Override
     public String getMixinPackage() {
-        return Strings.nullToEmpty(this.mixinPackage);
+        return this.mixinPackage == null ? "" : this.mixinPackage;
     }
     
     /**
@@ -1152,11 +1158,12 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public List<String> getClasses() {
-        if (Strings.isNullOrEmpty(this.mixinPackage)) {
+        if (this.mixinPackage == null || this.mixinPackage.isEmpty()) {
             return Collections.<String>emptyList();
         }
 
-        Builder<String> list = ImmutableList.<String>builder();
+        List<String> list = new ArrayList<String>();
+
         for (List<String> classes : new List[] { this.mixinClasses, this.mixinClassesClient, this.mixinClassesServer} ) {
             if (classes != null) {
                 for (String className : classes) {
@@ -1164,7 +1171,8 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
                 }
             }
         }
-        return list.build();
+
+        return Collections.unmodifiableList(list);
     }
 
     /**
@@ -1296,7 +1304,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      *      package
      */
     public boolean packageMatch(String className) {
-        return !Strings.isNullOrEmpty(this.mixinPackage) && className.startsWith(this.mixinPackage);
+        return this.mixinPackage != null && !this.mixinPackage.isEmpty() && className.startsWith(this.mixinPackage);
     }
     
     /**

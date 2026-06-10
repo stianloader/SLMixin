@@ -43,8 +43,6 @@ import java.util.jar.Manifest;
 import org.spongepowered.asm.util.Files;
 import org.spongepowered.asm.util.JavaVersion;
 
-import com.google.common.io.ByteSource;
-
 /**
  * "Main" attribute cache for a URI container, mainly to avoid constantly
  * opening jar files just to read odd values out of the manifest.
@@ -148,26 +146,16 @@ public final class MainAttributes {
     
     private static Attributes getDirAttributes(File dir) {
         File manifestFile = new File(dir, JarFile.MANIFEST_NAME);
+
         if (manifestFile.isFile()) {
-            ByteSource source = com.google.common.io.Files.asByteSource(manifestFile);
-            InputStream inputStream = null;
-            try {
-                inputStream = source.openBufferedStream();
+            try (InputStream inputStream = java.nio.file.Files.newInputStream(dir.toPath())) {
                 Manifest manifest = new Manifest(inputStream);
                 return manifest.getMainAttributes();
-            } catch (IOException ex) {
-                // be quiet checkstyle
-            } finally {
-                try {
-                    if (inputStream != null) {
-                        inputStream.close();
-                    }
-                } catch (IOException e) {
-                    // ignore
-                }
+            } catch (IOException unused) {
+                return null;
             }
         }
-        
+
         return null;
     }
     

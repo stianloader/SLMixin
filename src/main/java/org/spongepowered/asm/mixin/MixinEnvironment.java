@@ -25,6 +25,7 @@
 package org.spongepowered.asm.mixin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,13 +34,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.spongepowered.asm.logging.Level;
-import org.spongepowered.asm.logging.ILogger;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.launch.GlobalProperties.Keys;
 import org.spongepowered.asm.launch.MixinBootstrap;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Opcodes;
+import org.spongepowered.asm.logging.ILogger;
+import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.mixin.extensibility.IEnvironmentTokenProvider;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -59,8 +60,6 @@ import org.spongepowered.asm.util.LanguageFeatures;
 import org.spongepowered.asm.util.PrettyPrinter;
 import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.perf.Profiler;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * The mixin environment manages global state information for the mixin
@@ -97,11 +96,7 @@ public final class MixinEnvironment implements ITokenProvider {
         /**
          * All phases
          */
-        static final List<Phase> phases = ImmutableList.of(
-            Phase.PREINIT,
-            Phase.INIT,
-            Phase.DEFAULT
-        );
+        static final List<Phase> phases = Collections.unmodifiableList(Arrays.asList(Phase.PREINIT, Phase.INIT, Phase.DEFAULT));
         
         /**
          * Phase ordinal

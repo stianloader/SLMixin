@@ -32,7 +32,17 @@ import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LocalVariableNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
@@ -54,8 +64,6 @@ import org.spongepowered.asm.util.Locals;
 import org.spongepowered.asm.util.PrettyPrinter;
 import org.spongepowered.asm.util.SignaturePrinter;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
-
-import com.google.common.base.Strings;
 
 /**
  * This class is responsible for generating the bytecode for injected callbacks,
@@ -447,19 +455,21 @@ public class CallbackInjector extends Injector {
             } catch (InvalidInjectionException ex) {
                 throw new InvalidInjectionException(this.info, String.format("%s selector %s", ip, ex.getMessage()));
             }
-            
+
             String id = ip.getId();
-            if (Strings.isNullOrEmpty(id)) {
+
+            if (id == null || id.isEmpty()) {
                 continue;
             }
-            
+
             String existingId = this.ids.get(Integer.valueOf(injectionNode.getId()));
+
             if (existingId != null && !existingId.equals(id)) {
                 Injector.logger.warn("Conflicting id for {} insn in {}, found id {} on {}, previously defined as {}", Bytecode.getOpcodeName(node),
                         injectorTarget.toString(), id, this.info, existingId);
                 break;
             }
-            
+
             this.ids.put(Integer.valueOf(injectionNode.getId()), id);
         }
         
@@ -788,9 +798,9 @@ public class CallbackInjector extends Injector {
      * @return Identifier to use
      */
     private String getIdentifier(Callback callback) {
-        String baseId = Strings.isNullOrEmpty(this.identifier) ? callback.target.method.name : this.identifier;
+        String baseId = (this.identifier == null || this.identifier.isEmpty()) ? callback.target.method.name : this.identifier;
         String locationId = this.ids.get(Integer.valueOf(callback.node.getId()));
-        return baseId + (Strings.isNullOrEmpty(locationId) ? "" : ":" + locationId);
+        return baseId + ((locationId == null || locationId.isEmpty()) ? "" : ":" + locationId);
     }
 
     /**

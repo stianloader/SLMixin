@@ -26,7 +26,9 @@ package org.spongepowered.asm.mixin.gen;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -41,8 +43,8 @@ import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
 import org.spongepowered.asm.mixin.injection.selectors.ElementNode;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelector;
-import org.spongepowered.asm.mixin.injection.selectors.TargetSelector;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelector.Configure;
+import org.spongepowered.asm.mixin.injection.selectors.TargetSelector;
 import org.spongepowered.asm.mixin.injection.selectors.TargetSelector.Result;
 import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.struct.SpecialMethodInfo;
@@ -51,10 +53,6 @@ import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
-
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Information about an accessor
@@ -69,7 +67,7 @@ public class AccessorInfo extends SpecialMethodInfo {
         /**
          * A field getter, accessor must accept no args and return field type
          */
-        FIELD_GETTER(ImmutableSet.<String>of("get", "is")) {
+        FIELD_GETTER(Collections.unmodifiableSet(new HashSet<>(Arrays.asList("get", "is")))) {
             @Override
             AccessorGenerator getGenerator(AccessorInfo info) {
                 return new AccessorGeneratorFieldGetter(info);
@@ -80,7 +78,7 @@ public class AccessorInfo extends SpecialMethodInfo {
          * A field setter, accessor must accept single arg of the field type and
          * return void
          */
-        FIELD_SETTER(ImmutableSet.<String>of("set")) {
+        FIELD_SETTER(Collections.unmodifiableSet(new HashSet<>(Arrays.asList("set")))) {
             @Override
             AccessorGenerator getGenerator(AccessorInfo info) {
                 return new AccessorGeneratorFieldSetter(info);
@@ -90,7 +88,7 @@ public class AccessorInfo extends SpecialMethodInfo {
         /**
          * An invoker (proxy) method
          */
-        METHOD_PROXY(ImmutableSet.<String>of("call", "invoke")) {
+        METHOD_PROXY(Collections.unmodifiableSet(new HashSet<>(Arrays.asList("call", "invoke")))) {
             @Override
             AccessorGenerator getGenerator(AccessorInfo info) {
                 return new AccessorGeneratorMethodProxy(info);
@@ -100,7 +98,7 @@ public class AccessorInfo extends SpecialMethodInfo {
         /**
          * An invoker (proxy) method
          */
-        OBJECT_FACTORY(ImmutableSet.<String>of("new", "create")) {
+        OBJECT_FACTORY(Collections.unmodifiableSet(new HashSet<>(Arrays.asList("new", "create")))) {
             @Override
             AccessorGenerator getGenerator(AccessorInfo info) {
                 return new AccessorGeneratorObjectFactory(info);
@@ -224,10 +222,12 @@ public class AccessorInfo extends SpecialMethodInfo {
 
         private static String getPrefixList() {
             List<String> prefixes = new ArrayList<String>();
+
             for (AccessorType type : AccessorType.values()) {
                 prefixes.addAll(type.getExpectedPrefixes());
             }
-            return Joiner.on('|').join(prefixes);
+
+            return String.join("|", prefixes);
         }
 
     }
@@ -338,7 +338,7 @@ public class AccessorInfo extends SpecialMethodInfo {
     }
 
     protected String getTargetName(String name) {
-        if (Strings.isNullOrEmpty(name)) {
+        if (name == null || name.isEmpty()) {
             String inflectedTarget = this.inflectTarget();
             if (inflectedTarget == null) {
                 throw new InvalidAccessorException(this.mixin, String.format("Failed to inflect target name for %s, supported prefixes: %s",

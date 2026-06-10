@@ -46,9 +46,6 @@ import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.IConsumer;
 import org.spongepowered.asm.util.asm.ASM;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-
 /**
  * Class generator which creates unique copies of inner classes within mixins
  * which are specialised to the target class. 
@@ -364,21 +361,23 @@ final class InnerClassGenerator implements IClassGenerator {
     }
 
     /**
-     * Get a BiMap of inner classes for the specified mixin+target combination
+     * Get a Map of inner classes for the specified mixin+target combination
      * so that references to the inner class can be remapped during application
      * 
      * @param owner Mixin which owns the original inner class
      * @param targetName Target class name
-     * @return BiMap of original (mixin) inner class names to conformed class
+     * @return Map of original (mixin) inner class names to conformed class
      *      names
      */
-    BiMap<String, String> getInnerClasses(MixinInfo owner, String targetName) {
-        BiMap<String, String> innerClasses = HashBiMap.<String, String>create();
+    Map<String, String> getInnerClasses(MixinInfo owner, String targetName) {
+        Map<String, String> innerClasses = new HashMap<String, String>();
+
         for (InnerClassInfo innerClass : this.innerClasses.values()) {
             if (innerClass.getMixin() == owner && targetName.equals(innerClass.getTargetName())) {
                 innerClasses.put(innerClass.getOriginalName(), innerClass.getName());
             }
         }
+
         return innerClasses;
     }
 

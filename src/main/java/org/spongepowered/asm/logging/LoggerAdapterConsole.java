@@ -28,8 +28,6 @@ import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.google.common.base.Strings;
-
 /**
  * A very basic logger adapter which does not log anything to file and simply
  * emits formatted log messages to the console printstreams
@@ -50,7 +48,7 @@ public class LoggerAdapterConsole extends LoggerAdapterAbstract {
      * @param name Logger name
      */
     public LoggerAdapterConsole(String name) {
-        super(Strings.nullToEmpty(name));
+        super(name == null ? "" : name);
     }
     
     @Override

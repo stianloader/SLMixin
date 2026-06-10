@@ -43,9 +43,6 @@ import org.spongepowered.asm.util.Quantifier;
 import org.spongepowered.asm.util.asm.IAnnotatedElement;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-
 /**
  * Utility class which contains the logic for resolving descriptors
  * ({@link Desc} annotations) starting from an element and recursing up the tree
@@ -117,7 +114,8 @@ public final class DescriptorResolver {
             if (this.searched == null) {
                 return "";
             }
-            return String.format("Searched coordinates [ \"%s\" ]", Joiner.on("\", \"").join(this.searched));
+
+            return String.format("Searched coordinates [ \"%s\" ]", String.join(",", this.searched.stream().map(s -> "\"" + s + "\"").toArray(String[]::new)));
         }
         
         /**
@@ -297,7 +295,7 @@ public final class DescriptorResolver {
     public static IResolvedDescriptor resolve(String id, ISelectorContext context) {
         boolean debug = false;
         IResolverObserver observer = new ResolverObserverBasic();
-        if (!Strings.isNullOrEmpty(id)) {
+        if (id != null && !id.isEmpty()) {
             if (DescriptorResolver.PRINT_ID.equals(id)) {
                 observer = new ResolverObserverDebug(context);
                 id = "";
@@ -402,7 +400,7 @@ public final class DescriptorResolver {
             IAnnotationHandle desc) {
         if (desc != null) {
             String descriptorId = desc.getValue("id", coordinate);
-            boolean implicit = Strings.isNullOrEmpty(id);
+            boolean implicit = id == null || id.isEmpty();
             if ((implicit && descriptorId.equalsIgnoreCase(coordinate)) || (!implicit && descriptorId.equalsIgnoreCase(id))) {
                 return desc;
             }

@@ -26,13 +26,11 @@ package org.spongepowered.asm.mixin.transformer;
 
 import java.util.List;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
-
-import com.google.common.base.Strings;
 
 /**
  * Convenience wrapper for mixin config plugins
@@ -53,8 +51,8 @@ class PluginHandle {
 
     PluginHandle(MixinConfig parent, IMixinService service, String pluginClassName) {
         IMixinConfigPlugin plugin = null;
-        
-        if (!Strings.isNullOrEmpty(pluginClassName)) {
+
+        if (pluginClassName != null && !pluginClassName.isEmpty()) {
             try {
                 Class<?> pluginClass = service.getClassProvider().findClass(pluginClassName, true);
                 plugin = (IMixinConfigPlugin)pluginClass.getDeclaredConstructor().newInstance();

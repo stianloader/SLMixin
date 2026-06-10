@@ -25,20 +25,39 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.lang.annotation.Annotation;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicStampedReference;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-import com.google.common.base.Suppliers;
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
-import org.objectweb.asm.tree.*;
-import org.spongepowered.asm.mixin.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.logging.ILogger;
+import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Intrinsic;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.extensibility.IActivityContext.IActivity;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -49,8 +68,6 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.struct.Constructor;
-import org.spongepowered.asm.mixin.injection.struct.InjectionNodes.InjectionNode;
-import org.spongepowered.asm.mixin.injection.struct.Target;
 import org.spongepowered.asm.mixin.throwables.MixinError;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
 import org.spongepowered.asm.mixin.transformer.ext.extensions.ExtensionClassExporter;
@@ -73,8 +90,6 @@ import org.spongepowered.asm.util.perf.Profiler.Section;
 import org.spongepowered.asm.util.throwables.ConstraintViolationException;
 import org.spongepowered.asm.util.throwables.InvalidConstraintException;
 
-import com.google.common.collect.ImmutableList;
-
 /**
  * Applies mixins to a target class
  */
@@ -83,7 +98,7 @@ class MixinApplicatorStandard {
     /**
      * Annotations which can have constraints
      */
-    protected static final List<Class<? extends Annotation>> CONSTRAINED_ANNOTATIONS = ImmutableList.<Class<? extends Annotation>>of(
+    protected static final List<Class<? extends Annotation>> CONSTRAINED_ANNOTATIONS = Collections.unmodifiableList(Arrays.asList(
         Overwrite.class,
         Inject.class,
         ModifyArg.class,
@@ -91,8 +106,8 @@ class MixinApplicatorStandard {
         Redirect.class,
         ModifyVariable.class,
         ModifyConstant.class
-    );
-    
+    ));
+
     /**
      * Passes the mixin applicator applies to each mixin
      */
@@ -325,8 +340,17 @@ class MixinApplicatorStandard {
                 });
                 break;
 
-            case INITIALISER_APPLY:
-                Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit);
+            case INITIALISER_APPLY: {
+                AtomicStampedReference<Clinit> targetClinitVar = new AtomicStampedReference<Clinit>(null, 0);
+
+                Supplier<Clinit> targetClinit = () -> {
+                    if (targetClinitVar.getStamp() == 0) {
+                        targetClinitVar.set(this.prepareOrCreateClinit(), 1);
+                    }
+
+                    return targetClinitVar.getReference();
+                };
+
                 this.processMixins(mixinContexts, (activity, mixin) -> {
                     if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
                         activity.next("Apply Initialisers");
@@ -335,7 +359,9 @@ class MixinApplicatorStandard {
                         this.applyClinit(mixin, targetClinit);
                     }
                 });
+
                 break;
+            }
 
             case ACCESSOR:
                 this.processMixins(mixinContexts, (activity, mixin) -> {

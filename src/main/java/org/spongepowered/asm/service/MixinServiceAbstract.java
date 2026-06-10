@@ -26,6 +26,7 @@ package org.spongepowered.asm.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +41,6 @@ import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.IConsumer;
 import org.spongepowered.asm.util.ReEntranceLock;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * Mixin Service base class
@@ -181,15 +179,18 @@ public abstract class MixinServiceAbstract implements IMixinService {
      */
     @Override
     public Collection<IContainerHandle> getMixinContainers() {
-        Builder<IContainerHandle> list = ImmutableList.<IContainerHandle>builder();
+        List<IContainerHandle> list = new ArrayList<IContainerHandle>();
         this.getContainersFromAgents(list);
-        return list.build();
+        return Collections.unmodifiableList(list);
     }
 
     /**
      * Collect mixin containers from platform agents
+     *
+     * @deprecated Nonstandard interface
      */
-    protected final void getContainersFromAgents(Builder<IContainerHandle> list) {
+    @Deprecated
+    protected final void getContainersFromAgents(List<IContainerHandle> list) {
         for (IMixinPlatformServiceAgent agent : this.getServiceAgents()) {
             Collection<IContainerHandle> containers = agent.getMixinContainers();
             if (containers != null) {

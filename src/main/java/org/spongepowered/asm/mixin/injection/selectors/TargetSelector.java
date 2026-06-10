@@ -54,8 +54,6 @@ import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
 import org.spongepowered.asm.util.logging.MessageRouter;
 
-import com.google.common.base.Strings;
-
 /**
  * Utility class for parsing selectors
  */
@@ -218,13 +216,12 @@ public final class TargetSelector {
         if (selectorId == null) {
             throw new IllegalArgumentException("Dynamic target selector class " + type + " is not annotated with @SelectorId");
         }
-        
+
         String annotationNamespace = selectorId.namespace();
-        if (!Strings.isNullOrEmpty(annotationNamespace)) {
+
+        if (annotationNamespace != null && !annotationNamespace.isEmpty()) {
             namespace = annotationNamespace;
-        }
-        
-        if (Strings.isNullOrEmpty(namespace)) {
+        } else if (namespace == null || namespace.isEmpty()) {
             throw new IllegalArgumentException("Dynamic target selector class " + type
                     + " has no namespace. Please specify namespace in SelectorId annotation or declaring configuration");
         }
@@ -420,7 +417,8 @@ public final class TargetSelector {
         }
         
         try {
-            return TargetSelector.dynamicSelectors.get(selectorId).parse(Strings.nullToEmpty(dynamic.group(4)).trim(), context);
+            String input = dynamic.group(4);
+            return TargetSelector.dynamicSelectors.get(selectorId).parse(input == null ? "" : input.trim(), context);
         } catch (ReflectiveOperationException ex) {
             return new InvalidSelector(ex.getCause(), string);
         } catch (Exception ex) {

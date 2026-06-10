@@ -24,10 +24,10 @@
  */
 package org.spongepowered.asm.obfuscation.mapping.common;
 
+import java.util.Objects;
+
 import org.spongepowered.asm.obfuscation.mapping.IMapping;
 import org.spongepowered.asm.util.Constants;
-
-import com.google.common.base.Objects;
 
 /**
  * Stores information about a method mapping during AP runs
@@ -122,7 +122,7 @@ public class MappingMethod implements IMapping<MappingMethod> {
     
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.getName(), this.desc);
+        return Objects.hash(this.getName(), this.desc);
     }
 
     @Override
@@ -131,7 +131,7 @@ public class MappingMethod implements IMapping<MappingMethod> {
             return true;
         }
         if (obj instanceof MappingMethod) {
-            return Objects.equal(this.name, ((MappingMethod)obj).name) && Objects.equal(this.desc, ((MappingMethod)obj).desc);
+            return Objects.equals(this.name, ((MappingMethod)obj).name) && Objects.equals(this.desc, ((MappingMethod)obj).desc);
         }
         return false;
     }

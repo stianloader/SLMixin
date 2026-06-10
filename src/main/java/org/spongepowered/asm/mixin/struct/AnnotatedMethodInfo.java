@@ -43,8 +43,6 @@ import org.spongepowered.asm.util.asm.IAnnotationHandle;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
 import org.spongepowered.asm.util.logging.MessageRouter;
 
-import com.google.common.base.Strings;
-
 /**
  * Data bundle for an annotated method in a mixin
  */
@@ -232,11 +230,19 @@ public class AnnotatedMethodInfo implements IInjectionPointContext {
         if (annotation == null) {
             return "";
         }
-        String description = Strings.nullToEmpty(annotation.<String>getValue());
+
+        String description =  annotation.getValue();
+
+        if (description == null) {
+            description = "";
+        }
+
         Type upstream = annotation.getTypeValue("mixin");
+
         if (upstream != null) {
             description = String.format("{%s} %s", upstream.getClassName(), description).trim();
         }
+
         return description.length() > 0 ? String.format(" Method is @Dynamic(%s).", description) : "";
     }
 

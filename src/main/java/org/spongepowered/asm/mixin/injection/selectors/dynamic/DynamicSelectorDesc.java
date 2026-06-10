@@ -45,8 +45,6 @@ import org.spongepowered.asm.util.Quantifier;
 import org.spongepowered.asm.util.SignaturePrinter;
 import org.spongepowered.asm.util.asm.IAnnotationHandle;
 
-import com.google.common.base.Strings;
-
 /**
  * A {@link ITargetSelector Target Selector} which matches candidates using
  * descriptors contained in {@link Desc &#064;Desc} annotations. The descriptor
@@ -267,7 +265,7 @@ public class DynamicSelectorDesc implements ITargetSelectorDynamic, ITargetSelec
         
         this.id = id;
         this.owner = owner;
-        this.name = Strings.emptyToNull(name);
+        this.name = name.isEmpty() ? null : name;
         this.args = args;
         this.returnType = returnType;
         this.methodDesc = returnType != null ? Bytecode.getDescriptor(returnType, args) : null;
@@ -353,7 +351,7 @@ public class DynamicSelectorDesc implements ITargetSelectorDynamic, ITargetSelec
     public String toString() {
         StringBuilder sb = new StringBuilder("@Desc(");
         boolean started = false;
-        if (!Strings.isNullOrEmpty(this.id)) {
+        if (this.id != null && !this.id.isEmpty()) {
             sb.append("id = \"").append(this.id).append("\"");
             started = true;
         }

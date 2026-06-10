@@ -24,11 +24,27 @@
  */
 package org.spongepowered.asm.mixin.transformer;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 import org.spongepowered.asm.mixin.MixinIntrinsics;
 import org.spongepowered.asm.mixin.extensibility.IActivityContext;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -37,9 +53,7 @@ import org.spongepowered.asm.mixin.transformer.struct.Clinit;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.Constants;
-
-import java.util.*;
-import java.util.stream.Collectors;
+import org.spongepowered.asm.util.internal.SLHelpers;
 
 class MixinApplicatorEnum extends MixinApplicatorStandard {
     private final Map<IMixinInfo, EnumInfo> extensionInfos = new HashMap<>();
@@ -125,16 +139,16 @@ class MixinApplicatorEnum extends MixinApplicatorStandard {
     }
 
     private void checkUniqueEnumConstants(List<MixinTargetContext> mixins) {
-        Multimap<String, MixinTargetContext> existingSources = ArrayListMultimap.create();
+        Map<String, List<MixinTargetContext>> existingSources = new HashMap<String, List<MixinTargetContext>>();
 
         for (FieldNode field : this.targetInfo.getSelfTypedFields()) {
-            existingSources.put(field.name, null);
+            existingSources.compute(field.name, SLHelpers.mapListMergeFunction(null));
         }
 
         for (MixinTargetContext mixin : mixins) {
             for (FieldNode field : mixin.getFields()) {
                 if (field.desc.equals('L' + this.targetClass.name + ';')) {
-                    existingSources.put(field.name, mixin);
+                    existingSources.compute(field.name, SLHelpers.mapListMergeFunction(mixin));
                 }
             }
         }

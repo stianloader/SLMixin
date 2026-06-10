@@ -76,8 +76,6 @@ import org.spongepowered.asm.util.LanguageFeatures;
 import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.asm.ClassNodeAdapter;
 
-import com.google.common.collect.BiMap;
-
 /**
  * This object keeps track of data for applying a mixin to a specific target
  * class <em>during</em> a mixin application. This is a single-use object which
@@ -126,7 +124,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     /**
      * 
      */
-    private final BiMap<String, String> innerClasses;
+    private final Map<String, String> innerClasses;
 
     /**
      * Shadow method list
@@ -997,7 +995,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             descriptorActivity.end();
             return desc.replace(type, innerClassName);
         }
-        if (this.innerClasses.inverse().containsKey(type)) {
+        if (this.innerClasses.containsValue(type)) {
             descriptorActivity.end();
             return desc;
         }
@@ -1293,7 +1291,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     /**
      * Get the map of inner classes to remapped inner classes
      */
-    BiMap<String, String> getInnerClasses() {
+    Map<String, String> getInnerClasses() {
         return this.innerClasses;
     }
 

@@ -29,11 +29,11 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
@@ -45,8 +45,6 @@ import org.spongepowered.asm.mixin.injection.throwables.InjectionError;
 import org.spongepowered.asm.mixin.injection.throwables.InvalidSliceException;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
-
-import com.google.common.base.Strings;
 
 /**
  * Stores information about a defined method slice for a particular injector.
@@ -349,7 +347,7 @@ public final class MethodSlice {
         }
 
         this.owner = owner;
-        this.id = Strings.nullToEmpty(id);
+        this.id = id == null ? "" : id;
         this.from = from;
         this.to = to;
         this.name = MethodSlice.getSliceName(id);
@@ -468,7 +466,7 @@ public final class MethodSlice {
     }
 
     private static String getSliceName(String id) {
-        return String.format("@Slice[%s]", Strings.nullToEmpty(id));
+        return String.format("@Slice[%s]", id == null ? "" : id);
     }
 
     /**
@@ -500,7 +498,7 @@ public final class MethodSlice {
     public static MethodSlice parse(ISliceContext info, AnnotationNode node) {
         String id = Annotations.<String>getValue(node, "id");
         String coord = "slice";
-        if (!Strings.isNullOrEmpty(id)) {
+        if (id != null && !id.isEmpty()) {
             coord += "." + id;
         }
         InjectionPointAnnotationContext sliceContext = new InjectionPointAnnotationContext(info, node, coord);

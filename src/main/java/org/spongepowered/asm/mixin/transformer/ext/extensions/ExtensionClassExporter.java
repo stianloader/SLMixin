@@ -27,11 +27,12 @@ package org.spongepowered.asm.mixin.transformer.ext.extensions;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.nio.file.Files;
 import java.util.regex.Pattern;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.transformer.ext.IDecompiler;
@@ -42,8 +43,6 @@ import org.spongepowered.asm.transformers.MixinClassWriter;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
-
-import com.google.common.io.Files;
 
 /**
  * Debug exporter
@@ -159,7 +158,7 @@ public class ExtensionClassExporter implements IExtension {
         try {
             byte[] bytecode = ExtensionClassExporter.getClassBytes(classNode, true);
             if (bytecode != null) {
-                Files.write(bytecode, outputFile);
+                Files.write(outputFile.toPath(), bytecode);
             }
         } catch (IOException ex) {
             // don't care

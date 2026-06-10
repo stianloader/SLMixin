@@ -24,10 +24,9 @@
  */
 package org.spongepowered.asm.obfuscation.mapping.common;
 
-import org.spongepowered.asm.obfuscation.mapping.IMapping;
+import java.util.Objects;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Strings;
+import org.spongepowered.asm.obfuscation.mapping.IMapping;
 
 /**
  * Stores information about a field mapping during AP runs
@@ -111,7 +110,7 @@ public class MappingField implements IMapping<MappingField> {
             return true;
         }
         if (obj instanceof MappingField) {
-            return Objects.equal(this.toString(), ((MappingField)obj).toString());
+            return Objects.equals(this.toString(), ((MappingField)obj).toString());
         }
         return false;
     }
@@ -123,6 +122,12 @@ public class MappingField implements IMapping<MappingField> {
 
     @Override
     public String toString() {
-        return String.format("L%s;%s:%s", this.getOwner(), this.getName(), Strings.nullToEmpty(this.getDesc()));
+        String desc = this.getDesc();
+
+        if (desc == null) {
+            desc = "";
+        }
+
+        return String.format("L%s;%s:%s", this.getOwner(), this.getName(), desc);
     }
 }

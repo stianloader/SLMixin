@@ -34,9 +34,7 @@ import java.util.Set;
 
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.logging.LoggerAdapterConsole;
-
-import com.google.common.base.Joiner;
-import com.google.common.collect.ObjectArrays;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
 
 /**
  * Provides access to the service layer which connects the mixin transformer to
@@ -94,7 +92,7 @@ public final class MixinService {
         synchronized void flush(ILogger logger) {
             for (LogEntry buffered : this.buffer) {
                 if (buffered.t != null) {
-                    logger.debug(buffered.message, ObjectArrays.concat(buffered.params, buffered.t));
+                    logger.debug(buffered.message, SLArrayUtils.concat(buffered.t, buffered.params));
                 } else {
                     logger.debug(buffered.message, buffered.params);
                 }
@@ -258,9 +256,9 @@ public final class MixinService {
 //                th.printStackTrace();
             }
         }
-        
+
         String brokenServiceNote = brokenServiceCount == 0 ? "" : " and " + brokenServiceCount + " other invalid services.";
-        throw new ServiceNotAvailableError("No mixin host service is available. Services: " + Joiner.on(", ").join(badServices) + brokenServiceNote);
+        throw new ServiceNotAvailableError("No mixin host service is available. Services: " + String.join(", ", badServices) + brokenServiceNote);
     }
 
     /**

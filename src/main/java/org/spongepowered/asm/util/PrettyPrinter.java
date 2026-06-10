@@ -36,8 +36,6 @@ import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.service.MixinService;
 
-import com.google.common.base.Strings;
-
 /**
  * Prints information in a pretty box
  */
@@ -112,7 +110,13 @@ public class PrettyPrinter {
         
         @Override
         public String toString() {
-            return Strings.repeat(new String(this.hrChars), PrettyPrinter.this.width + 2);
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = -2; i < PrettyPrinter.this.width; i++) {
+                builder.append(new String(this.hrChars));
+            }
+
+            return builder.toString();
         }
         
     }
@@ -199,7 +203,13 @@ public class PrettyPrinter {
         }
 
         void updateFormat() {
-            String spacing = Strings.repeat(" ", this.colSpacing);
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = 0; i < this.colSpacing; i++) {
+                sb.append(" ");
+            }
+
+            String spacing = sb.toString();
             StringBuilder format = new StringBuilder();
             boolean addSpacing = false;
             for (Column column : this.columns) {
@@ -706,10 +716,18 @@ public class PrettyPrinter {
      * @return fluent interface
      */
     public PrettyPrinter add(StackTraceElement[] stackTrace, int indent) {
-        String margin = Strings.repeat(" ", indent);
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < indent; i++) {
+            sb.append(" ");
+        }
+
+        String margin = sb.toString();
+
         for (StackTraceElement st : stackTrace) {
             this.add("%s%s", margin, st);
         }
+
         return this;
     }
     
@@ -731,10 +749,15 @@ public class PrettyPrinter {
      * @return fluent interface
      */
     public PrettyPrinter add(Object object, int indent) {
-        String margin = Strings.repeat(" ", indent);
-        return this.append(object, indent, margin);
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < indent; i++) {
+            sb.append(" ");
+        }
+
+        return this.append(object, indent, sb.toString());
     }
-    
+
     private PrettyPrinter append(Object object, int indent, String margin) {
         if (object instanceof String) {
             return this.add("%s%s", margin, object);

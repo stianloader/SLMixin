@@ -27,11 +27,17 @@ package org.spongepowered.asm.mixin.transformer;
 import java.lang.annotation.Annotation;
 import java.util.Iterator;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
@@ -44,7 +50,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
 import org.spongepowered.asm.mixin.struct.MemberRef;
-import org.spongepowered.asm.mixin.throwables.ClassMetadataNotFoundException;
 import org.spongepowered.asm.mixin.throwables.MixinException;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
@@ -64,8 +69,6 @@ import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
 import org.spongepowered.asm.util.throwables.SyntheticBridgeException;
-
-import com.google.common.base.Strings;
 
 /**
  * <p>Mixin bytecode pre-processor. This class is responsible for bytecode pre-
@@ -856,11 +859,18 @@ class MixinPreProcessorStandard {
     }
 
     private static String getDynamicInfo(String targetType, AnnotationNode annotation) {
-        String description = Strings.nullToEmpty(Annotations.<String>getValue(annotation));
+        String description = Annotations.<String>getValue(annotation);
+
+        if (description == null) {
+            description = "";
+        }
+
         Type upstream = Annotations.<Type>getValue(annotation, "mixin");
+
         if (upstream != null) {
             description = String.format("{%s} %s", upstream.getClassName(), description).trim();
         }
+
         return description.length() > 0 ? String.format(" %s is @Dynamic(%s)", targetType, description) : "";
     }
 

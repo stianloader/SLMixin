@@ -35,8 +35,6 @@ import org.spongepowered.asm.mixin.injection.struct.InjectionInfo.InjectorOrder;
 import org.spongepowered.asm.mixin.transformer.MixinTargetContext;
 import org.spongepowered.asm.util.Annotations;
 
-import com.google.common.base.Strings;
-
 /**
  * Information about a callback to inject, usually specified by {@link Inject}
  */
@@ -59,7 +57,7 @@ public class CallbackInjectionInfo extends InjectionInfo {
     
     @Override
     public String getSliceId(String id) {
-        return Strings.nullToEmpty(id);
+        return id == null ? "" : id;
     }
     
 }

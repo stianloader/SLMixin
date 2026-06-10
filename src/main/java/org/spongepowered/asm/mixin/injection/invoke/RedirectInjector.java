@@ -31,7 +31,16 @@ import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.InjectionPoint.RestrictTargetLevel;
@@ -50,9 +59,7 @@ import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.SignaturePrinter;
-
-import com.google.common.collect.ObjectArrays;
-import com.google.common.primitives.Ints;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
 
 /**
  * <p>A bytecode injector which allows a method call, field access or
@@ -173,7 +180,7 @@ public class RedirectInjector extends InvokeInjector {
             this.targetArgs = Type.getArgumentTypes(node.desc);
             this.handlerArgs = this.isStatic
                     ? this.targetArgs
-                    : ObjectArrays.concat(Type.getObjectType(node.owner), this.targetArgs);
+                    : SLArrayUtils.concat(Type.getObjectType(node.owner), this.targetArgs);
         }
         
     }
@@ -401,7 +408,7 @@ public class RedirectInjector extends InvokeInjector {
             extraLocals.add(argSize);
             extraStack.add(argSize);
             // No need to truncate target arg indices, pushArgs ignores args which don't exist
-            argMap = Ints.concat(argMap, target.getArgIndices());
+            argMap = SLArrayUtils.concat(argMap, target.getArgIndices());
         }
         AbstractInsnNode champion = this.invokeHandlerWithArgs(this.methodArgs, insns, argMap);
         if (invoke.coerceReturnType && invoke.returnType.getSort() >= Type.ARRAY) {

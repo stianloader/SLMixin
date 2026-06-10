@@ -29,10 +29,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.primitives.Chars;
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.FabricUtil;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
@@ -40,9 +39,8 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinMethodNode;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Counter;
-
-import com.google.common.base.Strings;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
 
 /**
  * Maintains method remaps for a target class
@@ -123,7 +121,7 @@ class MethodMapper {
         String methodName = method.name;
         if (!mod.isEmpty()) {
             //It's common for mods to prefix their own handlers, let's account for that happening
-            if (methodName.startsWith(mod) && methodName.length() > mod.length() + 1 && Chars.contains(new char[] {'_', '$'}, methodName.charAt(mod.length()))) {
+            if (methodName.startsWith(mod) && methodName.length() > mod.length() + 1 && SLArrayUtils.contains(new char[] {'_', '$'}, methodName.charAt(mod.length()))) {
                 methodName = methodName.substring(mod.length() + 1);
             }
             mod += '$';
@@ -148,7 +146,7 @@ class MethodMapper {
             String mod = MethodMapper.getMixinSourceId(mixin, "");
             if (!mod.isEmpty()) {
                 //It's rarer for mods to prefix their @Unique methods, but let's account for it anyway
-                if (methodName.startsWith(mod) && methodName.length() > mod.length() + 1 && Chars.contains(new char[] {'_', '$'}, methodName.charAt(mod.length()))) {
+                if (methodName.startsWith(mod) && methodName.length() > mod.length() + 1 && SLArrayUtils.contains(new char[] {'_', '$'}, methodName.charAt(mod.length()))) {
                     methodName = methodName.substring(mod.length() + 1);
                 }
                 if (preservePrefix) {
@@ -230,6 +228,7 @@ class MethodMapper {
         return String.format("%03x", id.value);
     }
 
+    // Geolykt note: DAFUQ?
     /**
      * Finagle a string from an index thingummy, for science, you monster
      * 
@@ -243,7 +242,14 @@ class MethodMapper {
             char c = hex.charAt(pos);
             sb.append(c += c < 0x3A ? 0x31 : 0x0A);
         }
-        return Strings.padStart(sb.toString(), 3, 'z');
+
+        String ret = sb.toString();
+
+        while (ret.length() < 3) {
+            ret = "z" + ret;
+        }
+
+        return ret;
     }
 
 }

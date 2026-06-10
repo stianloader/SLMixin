@@ -34,12 +34,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
@@ -61,11 +63,6 @@ import org.spongepowered.asm.mixin.transformer.MixinTargetContext;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.IMessageSink;
-
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * <p>Base class for injection point discovery classes. Each subclass describes
@@ -472,7 +469,7 @@ public abstract class InjectionPoint {
          */
         @Override
         public String toString() {
-            return "CompositeInjectionPoint(" + this.getClass().getSimpleName() + ")[" + Joiner.on(',').join(this.components) + "]";
+            return "CompositeInjectionPoint(" + this.getClass().getSimpleName() + ")[" + String.join(",", Arrays.asList(this.components).stream().map(Objects::toString).toArray(String[]::new)) + "]";
         }
     }
 
@@ -703,14 +700,16 @@ public abstract class InjectionPoint {
      *      failed
      */
     public static List<InjectionPoint> parse(IInjectionPointContext context, List<AnnotationNode> ats) {
-        Builder<InjectionPoint> injectionPoints = ImmutableList.<InjectionPoint>builder();
+        List<InjectionPoint> injectionPoints = new ArrayList<InjectionPoint>();
+
         for (AnnotationNode at : ats) {
             InjectionPoint injectionPoint = InjectionPoint.parse(new InjectionPointAnnotationContext(context, at, "at"), at);
             if (injectionPoint != null) {
                 injectionPoints.add(injectionPoint);
             }
         }
-        return injectionPoints.build();
+
+        return Collections.unmodifiableList(injectionPoints);
     }
     
     /**
@@ -780,9 +779,9 @@ public abstract class InjectionPoint {
         int opcode = Annotations.<Integer>getValue(at, "opcode", Integer.valueOf(0));
         String id = Annotations.<String>getValue(at, "id");
         int flags = InjectionPoint.Flags.parse(at);
-        
+
         if (args == null) {
-            args = ImmutableList.<String>of();
+            args = Collections.emptyList();
         }
 
         return InjectionPoint.parse(context, value, shift, by, args, target, slice, ordinal, opcode, id, flags);
@@ -965,21 +964,22 @@ public abstract class InjectionPoint {
         }
         
         String annotationNamespace = code.namespace();
-        if (!Strings.isNullOrEmpty(annotationNamespace)) {
+
+        if (annotationNamespace != null && !annotationNamespace.isEmpty()) {
             namespace = annotationNamespace;
         }
-        
+
         Class<? extends InjectionPoint> existing = InjectionPoint.types.get(code.value());
         if (existing != null && !existing.equals(type)) {
             MixinService.getService().getLogger("mixin").debug("Overriding InjectionPoint {} with {} (previously {})", code.value(), type.getName(),
                     existing.getName());
-        } else if (Strings.isNullOrEmpty(namespace)) {
+        } else if (namespace == null || namespace.isEmpty()) {
             MixinService.getService().getLogger("mixin").warn("Registration of InjectionPoint {} with {} without specifying namespace is deprecated.",
                     code.value(), type.getName());
         }
         
         String id = code.value().toUpperCase(Locale.ROOT);
-        if (!Strings.isNullOrEmpty(namespace)) {
+        if (namespace != null && !namespace.isEmpty()) {
             id = namespace.toUpperCase(Locale.ROOT) + ":" + id;
         }
         

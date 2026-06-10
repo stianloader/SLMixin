@@ -24,10 +24,11 @@
  */
 package org.spongepowered.asm.mixin.transformer;
 
+import java.util.Objects;
+
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.service.ISyntheticClassInfo;
-
-import com.google.common.base.Preconditions;
 
 /**
  * Information bundle about a synthetic class provided by Mixin
@@ -37,17 +38,19 @@ public abstract class SyntheticClassInfo implements ISyntheticClassInfo {
     /**
      * Mixin which provides this class
      */
+    @NotNull
     protected final IMixinInfo mixin;
     
     /**
      * Class name (internal name)
      */
+    @NotNull
     protected final String name;
     
-    protected SyntheticClassInfo(IMixinInfo mixin, String name) {
-        Preconditions.checkNotNull(mixin, "parent");
-        Preconditions.checkNotNull(name, "name");
-        
+    protected SyntheticClassInfo(@NotNull IMixinInfo mixin, @NotNull String name) {
+        Objects.requireNonNull(mixin);
+        Objects.requireNonNull(name);
+
         this.mixin = mixin;
         this.name = name.replace('.', '/');;
     }

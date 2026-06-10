@@ -32,7 +32,6 @@ import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Set;
 
-import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -40,6 +39,7 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.FrameNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.LabelNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Constant.Condition;
@@ -52,11 +52,8 @@ import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.Constants;
-
-import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Floats;
-import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
+import org.spongepowered.asm.util.internal.SLArrayUtils;
+import org.spongepowered.asm.util.internal.SLNumberParser;
 
 /**
  * Special injection point which can be defined by an {@link Constant}
@@ -174,10 +171,10 @@ public class BeforeConstant extends InjectionPoint {
         
         this.ordinal = data.getOrdinal();
         this.nullValue = empty != null && empty.booleanValue();
-        this.intValue = Ints.tryParse(data.get("intValue", ""));
-        this.floatValue = Floats.tryParse(data.get("floatValue", ""));
-        this.longValue = Longs.tryParse(data.get("longValue", ""));
-        this.doubleValue = Doubles.tryParse(data.get("doubleValue", ""));
+        this.intValue = SLNumberParser.parseInt(data.get("intValue", ""));
+        this.floatValue = SLNumberParser.parseFloat(data.get("floatValue", ""));
+        this.longValue = SLNumberParser.parseLong(data.get("longValue", ""));
+        this.doubleValue = SLNumberParser.parseDouble(data.get("doubleValue", ""));
         this.stringValue = data.get("stringValue", (String)null);
         String strClassValue = data.get("classValue", (String)null);
         this.typeValue = strClassValue != null ? Type.getObjectType(strClassValue.replace('.', '/')) : null;
@@ -213,13 +210,16 @@ public class BeforeConstant extends InjectionPoint {
 
     private int[] parseExpandOpcodes(List<Condition> conditions) {
         Set<Integer> opcodes = new HashSet<Integer>();
+
         for (Condition condition : conditions) {
             Condition actual = condition.getEquivalentCondition();
+
             for (int opcode : actual.getOpcodes()) {
                 opcodes.add(Integer.valueOf(opcode));
             }
         }
-        return Ints.toArray(opcodes);
+
+        return SLArrayUtils.toIntArray(opcodes);
     }
 
     @Override
